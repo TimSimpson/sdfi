@@ -21,12 +21,22 @@ include_directories(
     ./lib/catch/single_include
 )
 
+
+
+function(add_wc_exe name src)
+    add_executable(${name} src/${src})
+    install(TARGETS ${name} RUNTIME DESTINATION bin)
+endfunction()
+
+
 function(add_wc_test name)
     add_executable(${name} tests/${name}.cpp)
     install(TARGETS ${name} RUNTIME DESTINATION bin)
     add_test(test_${name} ${name})
-    add_custom_target(all_tests COMMAND ${CMAKE_CTEST_COMMAND}
-                      DEPENDS test_${name})
+    # add_custom_target(all_tests COMMAND ${CMAKE_CTEST_COMMAND}
+    #                   DEPENDS test_${name})
 endfunction()
 
+add_wc_exe(read_file wc/read_file.cpp)
 add_wc_test(count)
+

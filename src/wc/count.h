@@ -1,11 +1,13 @@
 #ifndef FILE_GUARD_WC_COUNT_H
 #define FILE_GUARD_WC_COUNT_H
 
+
 #include <cctype>
 #include <map>
 #include <string>
 #include <vector>
 #include <utility>
+
 
 namespace wc {
 
@@ -18,86 +20,68 @@ inline bool is_word_character(char c) {
 }
 
 
-template<typename Iterator, typename Char, typename Func>
-void read_blob(Iterator begin, Iterator end, Func receive_word) {
+// Reads the given blob into the receiver. Returns the start of the last word
+// it was reading, or the end iterator if it finished.
+template<typename Iterator, typename Func>
+Iterator read_blob(Iterator begin, Iterator end, Func & receive_word)
+{
     bool in_word = false;
-    string word;
     Iterator word_start;
-    Char c;
     for(Iterator i = begin; i != end; ++i) {
-        c = *i;
-        if (!in_word && is_word_character(c)) {
+        const bool word_char = is_word_character(*i);
+        if (!in_word && word_char) {
             word_start = i;
-        } else if (in_word && !is_word_character(c)) {
+            in_word = true;
+        } else if (in_word && !word_char) {
             //TODO: Check i -1 is ok.
-            receive_word(word_start, i - 1);
+            receive_word(word_start, i);
+            in_word = false;
         }
+    }
+    if (in_word) {
+        return word_start;
+    } else {
+        return end;
     }
 }
 
 
-// Keeps N number of top words. Use the add method to increment the words.
-template<int top_count>
-class top_word_collection {
-public:
-    using pair = std::pair<std::string, int>;
+// last_pos = reader(start_itr, end_itr)
 
-    top_word_collection()
-    :   min_count(0),
-        words()
-    {}
+// [&file](start_itr, end_itr) {
+//      file.read(start_itr, end_itr - start_itr);
+//      const auto length = file.gcount();
+//      return start_itr + length;
+// }
 
-    int get_min_count() const {
-        return min_count;
-    }
 
-    void add(const std::string & word, const int count) {
-        // ASSERT count >= min_count
-        pair new_value(word, count);
-        // Find first position not greater than count.
-        auto position = std::lower_bound(
-            words.begin(),
-            words.end(),
-            new_value,
-            [](pair a, pair b) { return a.second > b.second; }
-        );
-        words.insert(position, new_value);
-        trim();
-        // ASSERT min_count <= top_words.back().second
-        // Update minimum if it's just been replaced.
-        if (total_words() >= top_count)
-        {
-            min_count = words.back().second;
+template<int buffer_size, typename FileReader, typename Func>
+void read_using_buffer(FileReader & file_reader, Func & process_text) {
+    std::array<char, buffer_size> buffer;
+    auto start_itr = buffer.data();
+
+    while(file_reader) {
+        const auto max_length = buffer.end() - buffer.begin();
+        const auto length = file_reader(start_itr, max_length);
+        auto end_itr = start_itr + length;
+
+        auto last_unprocessed_pos = process_text(start_itr, end_itr);
+        if (last_unprocessed_pos == end_itr) {
+            start_itr = buffer.data();
+        } else {
+            if (last_unprocessed_pos == buffer.data()) {
+                throw std::length_error("Buffer is too small to accomodate "
+                    "continous data of this size.");
+            }
+            // Because the function didn't finish, we need to put that
+            // data at the start so it can try again.
+            std::copy(last_unprocessed_pos, end_itr, buffer.begin());
+            // TODO: Consider passing the previous itr back into process_text-
+            //       then this could be skipped.
+            start_itr = buffer.data();
         }
     }
-
-    // Total number of words including ties.
-    size_t total_words() const {
-        return words.size();
-    }
-
-private:
-    int min_count;
-    std::vector<pair> words;
-
-    void trim() {
-        // Ensure that the number of words were storing only exceeds the
-        // requred count if the last words are ties.
-        if (words.size() <= top_count) {
-            return;
-        }
-        // We could just erase the end of the vector but we want to include
-        // words that are tieing for last place. The code below finds the first
-        // non unique item.
-        const int min_count = words[top_count - 1].second;
-
-        auto itr = words.begin() + top_count;
-        while(itr != words.end() && itr->second == min_count) {
-            ++ itr;
-        }
-        words.erase(itr, words.end());
-    }
-};
+}
 
 
 // Counts words, keeping a map of all word counts and the top ten.
@@ -125,6 +109,8 @@ private:
     std::string word;
 };
 
+
 }  // end namespace wc
+
 
 #endif
