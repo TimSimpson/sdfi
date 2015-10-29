@@ -1,6 +1,7 @@
 #ifndef FILE_GUARD_WC_COUNT_H
 #define FILE_GUARD_WC_COUNT_H
 
+#include <cctype>
 #include <map>
 #include <string>
 #include <vector>
@@ -35,7 +36,7 @@ void read_blob(Iterator begin, Iterator end, Func receive_word) {
 }
 
 
-// Keeps N number of top words.
+// Keeps N number of top words. Use the add method to increment the words.
 template<int top_count>
 class top_word_collection {
 public:
@@ -50,7 +51,7 @@ public:
         return min_count;
     }
 
-    void insert(const std::string & word, const int count) {
+    void add(const std::string & word, const int count) {
         // ASSERT count >= min_count
         pair new_value(word, count);
         // Find first position not greater than count.
@@ -63,11 +64,15 @@ public:
         words.insert(position, new_value);
         trim();
         // ASSERT min_count <= top_words.back().second
-        min_count = words.back().second;
+        // Update minimum if it's just been replaced.
+        if (total_words() >= top_count)
+        {
+            min_count = words.back().second;
+        }
     }
 
     // Total number of words including ties.
-    int total_words() const {
+    size_t total_words() const {
         return words.size();
     }
 
@@ -76,56 +81,48 @@ private:
     std::vector<pair> words;
 
     void trim() {
-        // ASSERT PRE - original = words.length();
-
-        // Now see if there are more than top_count unique words. If so,
-        // delete some.
+        // Ensure that the number of words were storing only exceeds the
+        // requred count if the last words are ties.
         if (words.size() <= top_count) {
             return;
         }
-        int unique_count = 0;
-        auto itr = words.begin();
-        auto last = itr;
-        ++ itr;
-        while (itr != words.end()) {
-            if (itr->second != last->second) {
-                ++ unique_count;
-            }
-            if (unique_count > top_count) {
-                words.erase(itr, words.end());
-                break;
-            }
-            auto last = itr;
+        // We could just erase the end of the vector but we want to include
+        // words that are tieing for last place. The code below finds the first
+        // non unique item.
+        const int min_count = words[top_count - 1].second;
+
+        auto itr = words.begin() + top_count;
+        while(itr != words.end() && itr->second == min_count) {
             ++ itr;
         }
-
-        // ASSERT POST - check top_words.length() <= original;
+        words.erase(itr, words.end());
     }
 };
 
 
 // Counts words, keeping a map of all word counts and the top ten.
-template<typename Iterator, int top_count>
 class word_counter {
 public:
     word_counter()
     :   counts(),
-        word(),
+        word()
     {
     }
 
+    template<typename Iterator>
     void operator()(Iterator start, Iterator end) {
         word = std::string(start, end);
-        const int count = (++ counts[word]);
-        if (top_word_collection.get_min_count() <= count) {
-            top_word_collection.insert(word, count);
-        }
+        std::transform(word.begin(), word.end(), word.begin(), std::tolower);
+        counts[word] ++;
+    }
+
+    const std::map<std::string, int> & words() const {
+        return counts;
     }
 
 private:
     std::map<std::string, int> counts;
     std::string word;
-    top_word_collection<top_count> top_counts;
 };
 
 }  // end namespace wc
