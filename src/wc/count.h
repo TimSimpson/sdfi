@@ -1,6 +1,10 @@
 #ifndef FILE_GUARD_WC_COUNT_H
 #define FILE_GUARD_WC_COUNT_H
 
+#include <map>
+#include <string>
+#include <vector>
+#include <utility>
 
 namespace wc {
 
@@ -37,9 +41,8 @@ class top_word_collection {
 public:
     using pair = std::pair<std::string, int>;
 
-    top_words()
-    :   counts(),
-        min_collection_count(0),
+    top_word_collection()
+    :   min_count(0),
         words()
     {}
 
@@ -48,32 +51,36 @@ public:
     }
 
     void insert(const std::string & word, const int count) {
-        // ASSERT count >= min_collection_count
+        // ASSERT count >= min_count
         pair new_value(word, count);
         // Find first position not greater than count.
         auto position = std::lower_bound(
-            counts.begin(),
-            counts.end(),
+            words.begin(),
+            words.end(),
             new_value,
             [](pair a, pair b) { return a.second > b.second; }
         );
         words.insert(position, new_value);
         trim();
-        // ASSERT min_collection_count <= top_words.back().second
-        min_collection_count = words.back().second;
+        // ASSERT min_count <= top_words.back().second
+        min_count = words.back().second;
+    }
+
+    // Total number of words including ties.
+    int total_words() const {
+        return words.size();
     }
 
 private:
-    std::vector<int> counts;
     int min_count;
-    std::vector<info> words;
+    std::vector<pair> words;
 
     void trim() {
         // ASSERT PRE - original = words.length();
 
         // Now see if there are more than top_count unique words. If so,
         // delete some.
-        if (words.length() <= top_words) {
+        if (words.size() <= top_count) {
             return;
         }
         int unique_count = 0;
@@ -98,7 +105,7 @@ private:
 
 
 // Counts words, keeping a map of all word counts and the top ten.
-template<int top_count>
+template<typename Iterator, int top_count>
 class word_counter {
 public:
     word_counter()
@@ -118,7 +125,7 @@ public:
 private:
     std::map<std::string, int> counts;
     std::string word;
-    top_words<top_count> top_counts;
+    top_word_collection<top_count> top_counts;
 };
 
 }  // end namespace wc

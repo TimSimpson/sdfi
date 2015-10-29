@@ -8,7 +8,7 @@ if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../lib/catch)
 endif()
 
 include_directories(
-    ../include
+    ../src
     ../lib/catch/single_include
 )
 
