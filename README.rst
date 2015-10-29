@@ -1,0 +1,4 @@
+Word Count
+----------
+
+Counts words.
