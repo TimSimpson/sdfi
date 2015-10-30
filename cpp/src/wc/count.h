@@ -2,8 +2,10 @@
 #define FILE_GUARD_WC_COUNT_H
 
 
+#include <algorithm>
 #include <cctype>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <utility>
@@ -57,28 +59,28 @@ Iterator read_blob(Iterator begin, Iterator end, Func & receive_word)
 
 template<int buffer_size, typename FileReader, typename Func>
 void read_using_buffer(FileReader & file_reader, Func & process_text) {
-    std::array<char, buffer_size> buffer;
-    auto start_itr = buffer.data();
+    char buffer[buffer_size];
+    auto start_itr = buffer;
 
     while(file_reader) {
-        const auto max_length = buffer.end() - buffer.begin();
+        const auto max_length = buffer_size;
         const auto length = file_reader(start_itr, max_length);
         auto end_itr = start_itr + length;
 
         auto last_unprocessed_pos = process_text(start_itr, end_itr);
         if (last_unprocessed_pos == end_itr) {
-            start_itr = buffer.data();
+            start_itr = buffer;
         } else {
-            if (last_unprocessed_pos == buffer.data()) {
+            if (last_unprocessed_pos == buffer) {
                 throw std::length_error("Buffer is too small to accomodate "
                     "continous data of this size.");
             }
             // Because the function didn't finish, we need to put that
             // data at the start so it can try again.
-            std::copy(last_unprocessed_pos, end_itr, buffer.begin());
+            std::copy(last_unprocessed_pos, end_itr, buffer);
             // TODO: Consider passing the previous itr back into process_text-
             //       then this could be skipped.
-            start_itr = buffer.data();
+            start_itr = buffer;
         }
     }
 }
