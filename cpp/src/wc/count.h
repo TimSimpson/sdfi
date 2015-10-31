@@ -65,7 +65,7 @@ void read_using_buffer(InputStream & input_stream, Func & process_text) {
     while(input_stream && input_stream.good() && !input_stream.eof()) {
         const auto max_length = buffer_size;
 
-        input_stream.read(start_itr, max_length);
+        input_stream.read(start_itr, max_length - (start_itr - buffer));
         const auto length = input_stream.gcount();
 
         auto end_itr = start_itr + length;

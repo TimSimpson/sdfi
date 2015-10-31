@@ -172,46 +172,26 @@ TEST_CASE("read_using_buffer", "[read_using_buffer]") {
         CHECK(results[1] == "tac");
     }
 
-    // SECTION("No cut off problems.") {
-    //     // Goal here is to prove that if the processor returns anything other
-    //     // than the end_itr (the end of the buffer) then the read_using_buffer
-    //     // function will copy this data to the start and let it try again.
-    //     // So for example, with a buffer of 5 let's say we had the text "a taco!".
-    //     //
-    //     // The first pass would load "a tac". The processor function should at
-    //     // that point see the words "a" but nothing else and return that the
-    //     // last place it saw a word as the "t".
-    //     //
-    //     // The function should then copy "tac" to the start, and read in 2 more
-    //     // bytes, leaving us with "taco!" which will then be correctly read.
+    SECTION("short buffers are identified") {
+        // Makes sure a correct exception gets raised if the buffer is too
+        // small.
+        input << "a burrito!";
+        REQUIRE_THROWS_AS({
+            read_using_buffer<5>(input, processor);
+        },
+        std::length_error);
+    }
 
-    //     word_counter counter;
-    //     auto processor = [&counter](auto begin, auto end) {
-    //         return read_blob(begin, end, counter);
-    //     };
-    //     std::stringstream a_taco;
-    //     a_taco << "a   taco!";
-
-    //     read_using_buffer<5>(a_taco, processor);
-
-    //     CHECK(1 == counter.words().at("a"));
-    //     CHECK(1 == counter.words().at("taco"));
-    // }
-    // SECTION("buffer length problems are detected") {
-    //     // Proves that an exception is raised if the buffer size is too small.
-    //     // here, "taco" just fits in four- characters- which isn't enough
-    //     // to know it isn't followed by a word ending character. So we expect
-    //     // an exception (it would work if the buffer was 5, not 4).
-    //     word_counter counter;
-    //     auto processor = [&counter](auto begin, auto end) {
-    //         return read_blob(begin, end, counter);
-    //     };
-    //     std::stringstream a_taco;
-    //     a_taco << "a taco!";
-
-    //     read_using_buffer<4>(a_taco, processor);
-
-    //     CHECK(1 == counter.words().at("a"));
-    //     CHECK(1 == counter.words().at("taco"));
-    // }
+    SECTION("Avoid double counting") {
+        // In the first pass, the buffer will be "a tac". "a" should be
+        // recorded, but not "tac". On the next pass, the buffer should be
+        // "tac!" and "tac" should be recorded.
+        input << "a taco taco taco taco taco!";
+        read_using_buffer<5>(input, processor);
+        CHECK(6 == results.size());
+        CHECK(results[0] == "a");
+        for (int i = 1; i <= 5; ++ i) {
+            CHECK(results[1] == "taco");
+        }
+    }
 }
