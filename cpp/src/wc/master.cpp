@@ -9,20 +9,21 @@ using namespace wc;
 using std::string;
 
 
-
 int main(int argc, const char * * args) {
-    if (argc < 2) {
+    if (argc < 3) {
         std::cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
-                  << " port" << std::endl;
+                  << " host port" << std::endl;
         return 1;
     }
-    int port = boost::lexical_cast<int>(args[1]);
+    string host(args[1]);
+    string port(args[2]);
+    //int port = boost::lexical_cast<int>(args[2]);
 
     try {
-        server server(port);
-        string input = server.read();
-        std::cout << input << std::endl;
-        server.write("Response.");
+        wc::client client(host, port);
+        client.send("HI!");
+        string response = client.receive();
+        std::cout << response << std::endl;
     } catch(const std::exception & e) {
         std::cerr << "An error occured: " << e.what() << std::endl;
     }

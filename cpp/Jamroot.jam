@@ -5,6 +5,8 @@ boost.use-project 1.59 ;
 project WordCount
     :   requirements
         <library>/boost//filesystem
+        <library>/boost//regex
+        <library>/boost//system
         <include>src
     ;
 
@@ -20,8 +22,14 @@ exe worker
     :   src/wc/worker.cpp
     ;
 
+exe master
+    :   src/wc/master.cpp
+    ;
+
+
 install exe
-    :   read_file
+    :   master
+        read_file
         read_directory
         worker
     ;

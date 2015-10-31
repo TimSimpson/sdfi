@@ -60,6 +60,11 @@ Iterator read_blob(Iterator begin, Iterator end, Func & receive_word)
 template<int buffer_size, typename InputStream, typename Func>
 void read_using_buffer(InputStream & input_stream, Func & process_text) {
     char buffer[buffer_size];
+
+    auto x = 3;
+
+
+
     auto start_itr = buffer;
 
     while(input_stream && input_stream.good() && !input_stream.eof()) {
@@ -104,7 +109,7 @@ public:
     template<typename Iterator>
     void operator()(Iterator start, Iterator end) {
         word = std::string(start, end);
-        std::transform(word.begin(), word.end(), word.begin(), std::tolower);
+        std::transform(word.begin(), word.end(), word.begin(), ::tolower);
         counts[word] ++;
     }
 
