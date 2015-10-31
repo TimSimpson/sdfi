@@ -57,17 +57,23 @@ Iterator read_blob(Iterator begin, Iterator end, Func & receive_word)
 // }
 
 
-template<int buffer_size, typename FileReader, typename Func>
-void read_using_buffer(FileReader & file_reader, Func & process_text) {
+template<int buffer_size, typename InputStream, typename Func>
+void read_using_buffer(InputStream & input_stream, Func & process_text) {
     char buffer[buffer_size];
     auto start_itr = buffer;
 
-    while(file_reader) {
+    while(input_stream && input_stream.good() && !input_stream.eof()) {
         const auto max_length = buffer_size;
-        const auto length = file_reader(start_itr, max_length);
+
+        input_stream.read(start_itr, max_length);
+        const auto length = input_stream.gcount();
+
         auto end_itr = start_itr + length;
 
-        auto last_unprocessed_pos = process_text(start_itr, end_itr);
+        // Each time, process_text reads the full buffer- this is to give it
+        // a chance to pick up any words it may have missed the last round,
+        // which get copied back to the start of the buffer.
+        auto last_unprocessed_pos = process_text(buffer, end_itr);
         if (last_unprocessed_pos == end_itr) {
             start_itr = buffer;
         } else {
@@ -80,7 +86,7 @@ void read_using_buffer(FileReader & file_reader, Func & process_text) {
             std::copy(last_unprocessed_pos, end_itr, buffer);
             // TODO: Consider passing the previous itr back into process_text-
             //       then this could be skipped.
-            start_itr = buffer;
+            start_itr = buffer + (end_itr - last_unprocessed_pos);
         }
     }
 }
