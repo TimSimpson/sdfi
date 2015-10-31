@@ -1,0 +1,27 @@
+import boost ;
+
+boost.use-project 1.59 ;
+
+project WordCount
+    :   requirements
+        <library>/boost//filesystem
+        <include>src
+    ;
+
+exe read_file
+    :   src/wc/read_file.cpp
+    ;
+
+exe read_directory
+    :   src/wc/read_directory.cpp
+    ;
+
+exe worker
+    :   src/wc/worker.cpp
+    ;
+
+install exe
+    :   read_file
+        read_directory
+        worker
+    ;
