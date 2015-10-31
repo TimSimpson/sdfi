@@ -1,5 +1,5 @@
-#ifndef FILE_GUARD_WC_SERVER_H
-#define FILE_GUARD_WC_SERVER_H
+#ifndef FILE_GUARD_WC_TCP_H
+#define FILE_GUARD_WC_TCP_H
 
 #include <iostream>
 #include <boost/asio.hpp>
@@ -67,7 +67,7 @@ public:
         // Write header- make sure the length is 4.
         char header_bytes[4];
         std::sprintf(header_bytes, "%4d", static_cast<int>(message.length()));
-        write(socket, buffer(header_bytes, 4));
+        write(socket, buffer(header_bytes, sizeof(header_bytes)));
         // Write body.
         write(socket, buffer(message.c_str(), message.size()));
     }

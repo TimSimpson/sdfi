@@ -1,4 +1,5 @@
-// Accepts a filename as input or reads from stdin.
+// Accepts a directory as it's first argument and reads all files.
+
 #include <wc/count.h>
 #include <algorithm>
 #include <array>

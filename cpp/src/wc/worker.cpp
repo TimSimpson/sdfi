@@ -1,6 +1,7 @@
-// Accepts a filename as input or reads from stdin.
+// Starts a server on the given port and waits for an action.
+
 #include <wc/count.h>
-#include <wc/server.h>
+#include <wc/tcp.h>
 #include <iostream>
 #include <boost/lexical_cast.hpp>
 

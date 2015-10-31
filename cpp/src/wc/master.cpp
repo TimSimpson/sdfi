@@ -1,6 +1,7 @@
-// Accepts a filename as input or reads from stdin.
+// Connects to a worker and tells it what to do.
+
 #include <wc/count.h>
-#include <wc/server.h>
+#include <wc/tcp.h>
 #include <iostream>
 #include <boost/lexical_cast.hpp>
 

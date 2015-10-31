@@ -1,4 +1,5 @@
 // Accepts a filename as input or reads from stdin.
+
 #include <wc/count.h>
 #include <algorithm>
 #include <array>
@@ -10,8 +11,6 @@
 using namespace wc;
 using boost::optional;
 using std::string;
-
-
 
 
 int main(int argc, const char * * args) {
