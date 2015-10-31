@@ -25,7 +25,7 @@ inline bool is_word_character(char c) {
 // Reads the given blob into the receiver. Returns the start of the last word
 // it was reading, or the end iterator if it finished.
 template<typename Iterator, typename Func>
-Iterator read_blob(Iterator begin, Iterator end, Func & receive_word)
+Iterator read_blob(Iterator begin, Iterator end, bool eof, Func & receive_word)
 {
     bool in_word = false;
     Iterator word_start;
@@ -41,10 +41,17 @@ Iterator read_blob(Iterator begin, Iterator end, Func & receive_word)
         }
     }
     if (in_word) {
-        return word_start;
-    } else {
-        return end;
+        if (eof) {
+            // We've been promised this is the end, so read it.
+            receive_word(word_start, end);
+        } else {
+            // Tell the caller how far we got so this will be replayed.
+            return word_start;
+        }
     }
+    // If we just read a word or the last elements weren't intersting
+    // tell the caller we've finished with the text.
+    return end;
 }
 
 
@@ -60,11 +67,6 @@ Iterator read_blob(Iterator begin, Iterator end, Func & receive_word)
 template<int buffer_size, typename InputStream, typename Func>
 void read_using_buffer(InputStream & input_stream, Func & process_text) {
     char buffer[buffer_size];
-
-    auto x = 3;
-
-
-
     auto start_itr = buffer;
 
     while(input_stream && input_stream.good() && !input_stream.eof()) {
@@ -78,7 +80,8 @@ void read_using_buffer(InputStream & input_stream, Func & process_text) {
         // Each time, process_text reads the full buffer- this is to give it
         // a chance to pick up any words it may have missed the last round,
         // which get copied back to the start of the buffer.
-        auto last_unprocessed_pos = process_text(buffer, end_itr);
+        auto last_unprocessed_pos = process_text(
+            buffer, end_itr, input_stream.eof());
         if (last_unprocessed_pos == end_itr) {
             start_itr = buffer;
         } else {

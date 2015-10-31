@@ -22,8 +22,8 @@ int main(int argc, const char * * args) {
     }
 
     word_counter counter;
-    auto processor = [&counter](auto begin, auto end) {
-        return read_blob(begin, end, counter);
+    auto processor = [&counter](auto begin, auto end, bool eof) {
+        return read_blob(begin, end, eof, counter);
     };
 
     const size_t buffer_size = 10 * 1024;

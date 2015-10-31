@@ -72,41 +72,56 @@ TEST_CASE("is_word_character", "[word_counter]") {
 
 TEST_CASE("read_blob", "[word_counter]") {
     word_counter counter;
-    auto add_text = [&counter](const std::string & text) {
-        return read_blob(text.begin(), text.end(), counter);
+    auto add_text = [&counter](const std::string & text, bool eof) {
+        return read_blob(text.begin(), text.end(), eof, counter);
     };
 
     REQUIRE(0 == counter.words().size());
 
-    SECTION("Word is not read unless non-word char is seen at the end.") {
+    SECTION("Word is not read unless non-word char is seen at the end...") {
         std::string text("hello");
-        auto itr = read_blob(text.begin(), text.end(), counter);
+        auto itr = read_blob(text.begin(), text.end(), false, counter);
         REQUIRE(0 == counter.words().size());
         REQUIRE(counter.words().end() == counter.words().find("hello"));
         // An iterator to the start of the last word it was seeing is returned.
         REQUIRE(text.begin() == itr);
     }
 
+    SECTION("... except if this is the last bit of text.") {
+        std::string text("hello");
+        auto itr = read_blob(text.begin(), text.end(), true, counter);
+        REQUIRE(1 == counter.words().size());
+        REQUIRE(1 == counter.words().at("hello"));
+        // An iterator to the start of the last word it was seeing is returned.
+        REQUIRE(text.end() == itr);
+    }
+
     SECTION("Reading a simple word.") {
-        add_text("hello ");
+        add_text("hello ", false);
+        REQUIRE(1 == counter.words().size());
+        REQUIRE(1 == counter.words().at("hello"));
+    }
+
+    SECTION("Reading a simple word w/ eof.") {
+        add_text("hello ", true);
         REQUIRE(1 == counter.words().size());
         REQUIRE(1 == counter.words().at("hello"));
     }
 
     SECTION("Words aren't counted twice.") {
-        add_text("hello hello ");
+        add_text("hello hello ", false);
         REQUIRE(1 == counter.words().size());
         REQUIRE(2 == counter.words().at("hello"));
     }
 
     SECTION("Upper case words aren't counted twice.") {
-        add_text("hello HELLO ");
+        add_text("hello HELLO ", false);
         REQUIRE(1 == counter.words().size());
         REQUIRE(2 == counter.words().at("hello"));
     }
 
     SECTION("When reading multiple letters.") {
-        add_text("a b c d e A b C D E a B C D E ");
+        add_text("a b c d e A b C D E a B C D E ", false);
         REQUIRE(5 == counter.words().size());
         REQUIRE(3 == counter.words().at("a"));
         REQUIRE(3 == counter.words().at("b"));
@@ -116,7 +131,7 @@ TEST_CASE("read_blob", "[word_counter]") {
     }
 
     SECTION("Every nonvalid character is ignored.") {
-        add_text("a|b#c!@d#$e*()A~b=C+D _E `a'B{C}D=E/");
+        add_text("a|b#c!@d#$e*()A~b=C+D _E `a'B{C}D=E/", false);
         REQUIRE(5 == counter.words().size());
         REQUIRE(3 == counter.words().at("a"));
         REQUIRE(3 == counter.words().at("b"));
@@ -137,8 +152,8 @@ TEST_CASE("read_using_buffer", "[read_using_buffer]") {
     auto record_result = [&results](auto begin_str, auto end_str) {
         results.push_back(std::string(begin_str, end_str));
     };
-    auto processor = [&record_result](auto begin, auto end) {
-        return read_blob(begin, end, record_result);
+    auto processor = [&record_result](auto begin, auto end, bool eof) {
+        return read_blob(begin, end, eof, record_result);
     };
 
     std::stringstream input;
@@ -194,6 +209,16 @@ TEST_CASE("read_using_buffer", "[read_using_buffer]") {
         for (int i = 1; i <= 5; ++ i) {
             CHECK(results[1] == "taco");
         }
+    }
+
+    SECTION("Always include words at the end.") {
+        // Makes sure words that happen right before the end of the stream
+        // aren't ignore.
+        input << "a taco";
+        read_using_buffer<5>(input, processor);
+        CHECK(2 == results.size());
+        CHECK(results[0] == "a");
+        CHECK(results[1] == "taco");
     }
 }
 
