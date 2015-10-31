@@ -5,11 +5,16 @@ project(WordCount CXX)
 enable_language(CXX)
 enable_testing()
 
+
+# Needed for GCC- not sure how to disable it for Windows...
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+
+
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
-find_package(Boost 1.59 COMPONENTS filesystem system REQUIRED)
+find_package(Boost COMPONENTS filesystem regex system REQUIRED)
 if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../lib/catch)
     message(FATAL_ERROR "Catch unit test library not cloned. Please run "
             "git submodule update --init to clone this repository.")
@@ -25,6 +30,14 @@ include_directories(
 
 function(add_wc_exe name src)
     add_executable(${name} src/${src})
+    target_link_libraries(${name}
+        -lm
+        -lpthread
+        ${Boost_FILESYSTEM_LIBRARY}
+        ${Boost_REGEX_LIBRARY}
+        ${Boost_SYSTEM_LIBRARY}
+        ${Boost_LIBRARIES}
+    )
     install(TARGETS ${name} RUNTIME DESTINATION bin)
 endfunction()
 
@@ -39,18 +52,10 @@ endfunction()
 
 
 add_wc_exe(read_file wc/read_file.cpp)
+add_wc_exe(read_directory wc/read_directory.cpp)
 add_wc_exe(worker wc/worker.cpp)
-target_link_libraries(worker
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
-    ${Boost_LIBRARIES}
-)
-# add_wc_exe(read_directory wc/read_directory.cpp)
-# target_link_libraries(read_directory
-#     ${Boost_FILESYSTEM_LIBRARY}
-#     ${Boost_SYSTEM_LIBRARY}
-#     ${Boost_LIBRARIES}
-# )
+add_wc_exe(master wc/master.cpp)
+
 
 add_wc_test(count_tests)
 
