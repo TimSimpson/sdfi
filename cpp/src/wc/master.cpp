@@ -9,20 +9,40 @@
 
 using namespace wc;
 using std::string;
+using std::vector;
+
+
+struct worker {
+    string host;
+    string port;
+};
+
+
+void word_count(const std::string & directory, const vector<worker> & workers);
 
 
 int main(int argc, const char * * args) {
     if (argc < 4) {
         std::cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
-                  << " directory host port" << std::endl;
+                  << " directory host port [host port...]" << std::endl;
         return 1;
     }
     string directory(args[1]);
-    string host(args[2]);
-    string port(args[3]);
+    vector<worker> workers;
 
+    for (int i = 2; i + 1 < argc; i+= 2) {
+        worker w;
+        w.host = args[i];
+        w.port = args[i + 1];
+        workers.push_back(w);
+    }
+
+    word_count(directory, workers);
+}
+
+void word_count(const std::string & directory, const vector<worker> & workers) {
     try {
-        wc::client client(host, port);
+        wc::client client(workers[0].host, workers[0].port);
         client.send(directory);
         string response = client.receive();
         // std::cout << response << std::endl;

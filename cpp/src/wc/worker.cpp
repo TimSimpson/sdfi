@@ -32,28 +32,35 @@ int main(int argc, const char * * args) {
 
     server server(port);
 
-    try {
-        string directory = server.read();
+    try
+    {
+        while(true)
+        {
+            string directory = server.read();
 
-        // Read all words in the given directory.
-        std::cout << "Reading directory " << directory << "..." << std::endl;
-        wc::read_directory<buffer_size>(processor, directory, std::cerr);
+            // Read all words in the given directory.
+            std::cout << "Reading directory " << directory << "..."
+                      << std::endl;
+            wc::read_directory<buffer_size>(processor, directory, std::cerr);
+            std::cout << "Finished." << std::endl;
 
-        // TODO: Look into how much of a hit using a stringstream like this is.
+            // TODO: Using a streamstream is pretty dopey because the entirety
+            //       of the message has to be buffered in memory, but it
+            //       doesn't seem to affect anything. Still, look into it.
 
-        std::cout << "Finished." << std::endl;
+            // Create the giant message in memory.
+            stringstream stream;
+            for(const auto & word_info : counter.words()) {
+                stream << word_info.first << "\t" << word_info.second << "\n";
+            }
 
-        // Create the giant message in memory.
-        stringstream stream;
-        for(const auto & word_info : counter.words()) {
-            stream << word_info.first << "\t" << word_info.second << "\n";
+            // Change it into a giant string and send it.
+            auto s = stream.str();
+
+            std::cout << "Responding... (size == " << s.length() << ")"
+                      << std::endl;
+            server.write(s);
         }
-
-        // Change it into a giant string and send it.
-        auto s = stream.str();
-
-        std::cout << "Responding..." << std::endl;
-        server.write(s);
     } catch(const std::exception & e) {
         std::cerr << "An error occured: " << e.what() << std::endl;
     }
