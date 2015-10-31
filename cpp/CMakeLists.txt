@@ -5,7 +5,11 @@ project(WordCount CXX)
 enable_language(CXX)
 enable_testing()
 
-find_package(Boost)
+# set(Boost_USE_STATIC_LIBS OFF)
+# set(Boost_USE_MULTITHREADED ON)
+# set(Boost_USE_STATIC_RUNTIME OFF)
+
+find_package(Boost 1.59 COMPONENTS filesystem system REQUIRED)
 if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../lib/catch)
     message(FATAL_ERROR "Catch unit test library not cloned. Please run "
             "git submodule update --init to clone this repository.")
@@ -15,6 +19,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 include_directories(
     ./src
     ../lib/catch/single_include
+    ../lib/tinydir
 )
 
 
@@ -33,6 +38,15 @@ function(add_wc_test name)
     #                   DEPENDS test_${name})
 endfunction()
 
+
 add_wc_exe(read_file wc/read_file.cpp)
+add_wc_exe(read_directory wc/read_directory.cpp)
+
+target_link_libraries(read_directory
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
+    ${Boost_LIBRARIES}
+)
+
 add_wc_test(count_tests)
 
