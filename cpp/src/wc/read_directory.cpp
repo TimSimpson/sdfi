@@ -37,7 +37,6 @@ int main(int argc, const char * * args) {
 
     top_word_collection<10> top_words;
 
-    auto map = counter.words();
     for(const auto & word_info : counter.words()) {
         // std::cout << word_info.first << "\t" << word_info.second << "\n";
         top_words.add(word_info.first, word_info.second);

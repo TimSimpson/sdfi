@@ -45,7 +45,7 @@ public:
         using boost::asio::read;
 
         // Get header length
-        char header_bytes[4];
+        char header_bytes[8];
         read(socket, buffer(header_bytes, sizeof(header_bytes)));
         const size_t message_length = std::atoi(header_bytes);
 
@@ -65,8 +65,8 @@ public:
         using boost::asio::write;
 
         // Write header- make sure the length is 4.
-        char header_bytes[4];
-        std::sprintf(header_bytes, "%4d", static_cast<int>(message.length()));
+        char header_bytes[8];
+        std::sprintf(header_bytes, "%8d", static_cast<int>(message.length()));
         write(socket, buffer(header_bytes, sizeof(header_bytes)));
         // Write body.
         write(socket, buffer(message.c_str(), message.size()));
@@ -97,15 +97,11 @@ public:
         using boost::asio::buffer;
         using boost::asio::write;
 
-        if (!has_started) {
-            //acceptor.listen(socket);
-            acceptor.accept(socket);
-            has_started = true;
-        }
+        ensure_started();
 
         // Write header- make sure the length is 4.
-        char header_bytes[4];
-        std::sprintf(header_bytes, "%4d", static_cast<int>(data.length()));
+        char header_bytes[8];
+        std::sprintf(header_bytes, "%8d", static_cast<int>(data.length()));
         write(socket, buffer(header_bytes, sizeof(header_bytes)));
 
         // Write body.
@@ -116,11 +112,7 @@ public:
         using boost::asio::buffer;
         using boost::asio::read;
 
-        if (!has_started) {
-            //acceptor.listen(socket);
-            acceptor.accept(socket);
-            has_started = true;
-        }
+        ensure_started();
 
         // Get header length
         char header_bytes[4];
@@ -142,6 +134,14 @@ private:
     boost::asio::ip::tcp::acceptor acceptor;
     bool has_started;
     boost::asio::ip::tcp::socket socket;
+
+    void ensure_started() {
+        if (!has_started) {
+            //acceptor.listen(socket);
+            acceptor.accept(socket);
+            has_started = true;
+        }
+    }
 };
 
 
