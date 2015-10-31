@@ -1,5 +1,5 @@
-#ifndef FILE_GUARD_WC_COUNT_H
-#define FILE_GUARD_WC_COUNT_H
+#ifndef FILE_GUARD_WC_TOP_H
+#define FILE_GUARD_WC_TOP_H
 
 #include <cctype>
 #include <map>
@@ -43,6 +43,10 @@ public:
         {
             min_count = words.back().second;
         }
+    }
+
+    const std::vector<pair> & get_words() const {
+        return words;
     }
 
     // Total number of words including ties.

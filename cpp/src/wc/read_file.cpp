@@ -1,6 +1,7 @@
 // Accepts a filename as input or reads from stdin.
 
 #include <wc/count.h>
+#include <wc/top.h>
 #include <algorithm>
 #include <array>
 #include <fstream>
@@ -25,6 +26,7 @@ int main(int argc, const char * * args) {
     };
 
     const size_t buffer_size = 10 * 1024;
+
     try {
         if (file_name) {
             std::ifstream actual_file(file_name.get(), std::ifstream::binary);
@@ -40,8 +42,22 @@ int main(int argc, const char * * args) {
         return 2;
     }
 
+    top_word_collection<10> top_words;
+
     auto map = counter.words();
     for(auto itr = map.begin(); itr != map.end(); ++ itr) {
         std::cout << itr->first << "\t" << itr->second << "\n";
+        top_words.add(itr->first, itr->second);
     }
+
+    std::cout << std::endl;
+    std::cout << "Top words: " << std::endl;
+    std::cout << std::endl;
+    for(const auto & word_info : top_words.get_words()) {
+        std::cout << word_info.first << "\t" << word_info.second << "\n";
+    }
+
+
+
+
 }
