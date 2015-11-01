@@ -7,7 +7,9 @@
 #include <boost/lexical_cast.hpp>
 
 
-using namespace wc;
+using std::endl;
+using std::cerr;
+using std::cout;
 using std::string;
 using std::vector;
 
@@ -55,8 +57,8 @@ int word_count(const std::string & directory, vector<worker> & workers);
 
 int main(int argc, const char * * args) {
     if (argc < 4) {
-        std::cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
-                  << " directory host port [host port...]" << std::endl;
+        cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
+             << " directory host port [host port...]" << endl;
         return 1;
     }
     string directory(args[1]);
@@ -69,7 +71,7 @@ int main(int argc, const char * * args) {
     try {
         return word_count(directory, workers);
     } catch(const std::exception & e) {
-        std::cerr << "An error occured: " << e.what() << std::endl;
+        cerr << "An error occured: " << e.what() << endl;
         return 1;
     }
 }
@@ -80,7 +82,7 @@ int main(int argc, const char * * args) {
 void start_worker(boost::asio::io_service & ioservice, worker & worker,
                   int index, int worker_count, const string & directory)
 {
-    std::cout << "Starting worker " << worker.host << "..." << std::endl;
+    cout << "Starting worker " << worker.host << "..." << endl;
     wc::client client(ioservice, worker.host, worker.port);
 
     client.send(std::to_string(index));
@@ -98,7 +100,7 @@ void start_worker(boost::asio::io_service & ioservice, worker & worker,
         },
         [&worker](const std::string & msg) {
             worker.error_occured = true;
-            std::cerr << msg << std::endl;
+            cerr << msg << endl;
         }
     );
 }
@@ -111,27 +113,27 @@ int word_count(const std::string & directory, vector<worker> & workers) {
         start_worker(ioservice, workers[i], i, workers.size(), directory);
     }
 
-    std::cout << "Waiting..." << std::endl;
+    cout << "Waiting..." << endl;
     // Wait for everyone to finish.
     ioservice.run();
 
-    std::cout << "Finished..." << std::endl;
+    cout << "Finished..." << endl;
     for (const auto worker : workers) {
         if (worker.error_occured) {
-            std::cerr << "An error occured on " << worker.host << " "
-                      << worker.port << ". Results are invalid. :("
-                      << std::endl;
+            cerr << "An error occured on " << worker.host << " "
+                 << worker.port << ". Results are invalid. :("
+                 << endl;
             return 2;
         }
         if (!worker.finished) {
-            std::cerr << "Worker didn't finish: " << worker.host << " "
-                      << worker.port << "."
-                      << std::endl;
+            cerr << "Worker didn't finish: " << worker.host << " "
+                 << worker.port << "."
+                 << endl;
             return 2;
         }
     }
 
-    std::cout << "Performing final count..." << std::endl;
+    cout << "Performing final count..." << endl;
 
     // Commandeer the first element's results and use it for the running total.
     wc::word_map totals = workers[0].results;
@@ -148,13 +150,13 @@ int word_count(const std::string & directory, vector<worker> & workers) {
     for(auto itr = totals.begin(); itr != totals.end(); ++ itr) {
         top_words.add(itr->first, itr->second);
     }
-    std::cout << std::endl;
-    std::cout << "Top words: " << std::endl;
-    std::cout << std::endl;
+    cout << endl;
+    cout << "Top words: " << endl;
+    cout << endl;
     for(int i = 0; i < top_words.total_words(); ++i) {
         const auto word_info = top_words.get_words()[i];
-        std::cout << i + 1 << ". " << word_info.first
-                  << "\t" << word_info.second << "\n";
+        cout << i + 1 << ". " << word_info.first
+             << "\t" << word_info.second << "\n";
     }
 
 }
