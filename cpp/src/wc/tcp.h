@@ -5,6 +5,7 @@
 #include <memory>
 #include <boost/asio.hpp>
 #include <boost/asio/io_service.hpp>
+//#include <boost/optional.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/asio/buffer.hpp>
@@ -33,7 +34,11 @@ public:
                    Function3 on_error)
     :   socket(std::move(socket)),
         bytes(),
-        start(bytes.data()),
+        write_start(bytes.data()),
+        header_in_buffer(true),
+        expected_bytes(),
+        expected_bytes_read(false),
+        total_bytes_read(0),
         on_read(on_read),
         on_finish(on_finish),
         on_error(on_error)
@@ -46,10 +51,11 @@ public:
         // held onto by the lambda. Otherwise ASIO would try to call back
         // to this object to find it deleted.
         auto self = this->shared_from_this();
-        auto skip = start - bytes.data();
+        auto skip = write_start - bytes.data();
+        auto write_length = std::min(known_bytes_left(), bytes.size() - skip);
         boost::asio::async_read(
             socket,
-            boost::asio::buffer(start, (bytes.size() - skip)),
+            boost::asio::buffer(write_start, write_length),
             [this, self] (const boost::system::error_code & ec,
                           std::size_t length) {
                 _receive(ec, length);
@@ -59,34 +65,64 @@ public:
 
 private:
 
+    std::size_t known_bytes_left() const {
+        if (!expected_bytes_read) {
+            return header_size - total_bytes_read;
+        } else {
+            return expected_bytes - (total_bytes_read - header_size);
+        }
+    }
+
     // Reads more data and takes appropriate action.
     void _receive(const boost::system::error_code & ec, std::size_t length) {
         if (ec) {
             on_error(boost::system::system_error(ec).what());
-        } else  if (length < 1) {
+        } else if (length < 1) {
             on_error("Read less than one byte.");
         } else {
-            auto end = start + length;
-            bool eof = '!' == *(end - 1);
-
-            if (eof) {
-                end --;
+            total_bytes_read += length;
+            if (!expected_bytes_read) {
+                if (total_bytes_read > 7) {
+                    // Read the header.
+                    expected_bytes = std::atoi(bytes.data());
+                    expected_bytes_read = true;
+                } else {
+                    write_start += total_bytes_read;
+                    receive_async();   // Re-do
+                    return;
+                }
             }
-            auto last_unprocessed_pos = on_read(start, end, eof);
+
+            bool eof = known_bytes_left() == 0;
+            auto end = write_start + length;
+
+            // Send data back to the on_read method, but be sure to skip
+            // the header if its still in the buffer.
+            auto on_read_start = bytes.data();
+            if (header_in_buffer) {
+                on_read_start += 8;
+                header_in_buffer = false;
+            }
+            auto last_unprocessed_pos = on_read(on_read_start, end, eof);
+
+            // Finish up, or get ready for the next read.
+            // If there is unprocessed data at the end of the buffer, copy it
+            // to the start and make sure we write to the correct position
+            // on the next read.
             if (eof) {
                 on_finish();  // end iteration
             } else {
                 //TODO: This is very similar to read_using_buffer- maybe it
                 //      could be consolidated somehow.
                 if (last_unprocessed_pos == end) {
-                    start = bytes.data();
+                    write_start = bytes.data();
                 } else {
-                    if (last_unprocessed_pos == start) {
+                    if (last_unprocessed_pos == bytes.data()) {
                         throw std::length_error("Buffer is too small to "
                             "accomodate continous data of this size.");
                     }
                     std::copy(last_unprocessed_pos, end, bytes.data());
-                    start = bytes.data() + (end - last_unprocessed_pos);
+                    write_start = bytes.data() + (end - last_unprocessed_pos);
                 }
                 receive_async();
             }
@@ -96,7 +132,13 @@ private:
 private:
     boost::asio::ip::tcp::socket socket;
     std::array<char, buffer_size> bytes;
-    char * start;
+    char * write_start;
+    bool header_in_buffer;
+    //TODO: Wanted to use boost::optional, but it causes an internal compiler
+    //      error on GCC. -.-
+    std::size_t expected_bytes;
+    bool expected_bytes_read;
+    std::size_t total_bytes_read;
     Function1 on_read;
     Function2 on_finish;
     Function3 on_error;
@@ -167,7 +209,6 @@ public:
         using boost::asio::buffer;
         using boost::asio::write;
 
-        // Write header- make sure the length is 4.
         char header_bytes[header_size];
         std::sprintf(header_bytes, "%8d", static_cast<int>(message.length()));
         write(socket, buffer(header_bytes, sizeof(header_bytes)));
@@ -196,26 +237,19 @@ public:
     server(const server & other) = delete;
     server & operator=(const server & other) = delete;
 
-    void close() {
-        if (has_started) {
-            socket.close();
-            has_started = false;
-        }
-    }
-
     void write(const std::string & data) {
         using boost::asio::buffer;
         using boost::asio::write;
 
         ensure_started();
 
+        // Write header- make sure the length is 4.
+        char header_bytes[header_size];
+        std::sprintf(header_bytes, "%8d", static_cast<int>(data.length()));
+        write(socket, buffer(header_bytes, sizeof(header_bytes)));
+
         // Write body.
         write(socket, buffer(data.c_str(), data.size()));
-
-        // Write EOF byte.
-        char eof[1];
-        eof[0] = '!';
-        write(socket, buffer(eof, 1));
     }
 
     std::string read() {
@@ -249,8 +283,6 @@ private:
         if (!has_started) {
             //acceptor.listen(socket);
             acceptor.accept(socket);
-            boost::asio::socket_base::linger option(true, 30);
-            socket.set_option(option);
             has_started = true;
         }
     }

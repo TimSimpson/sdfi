@@ -45,20 +45,33 @@ int word_count(const std::string & directory, const vector<worker> & workers) {
         wc::client client(workers[0].host, workers[0].port);
         client.send(directory);
 
-        wc::word_counter word_counts;
 
         bool error_occured = false;
+        wc::top_word_collection<10> top_words;
+
+        bool is_odd = false;
+        string last_word;
+        auto record_words = [&top_words, &last_word, &is_odd](
+            auto start, auto end
+        ) {
+            is_odd = !is_odd;
+            if (is_odd) {
+                last_word = string(start, end);
+            } else {
+                string count_str(start, end);
+                std::size_t count =
+                    boost::lexical_cast<std::size_t>(count_str);
+                top_words.add(last_word, count);
+            }
+        };
 
         string response = client.async_receive<1024 * 4>(
-            [&word_counts](auto start, auto end, bool eof) {
-                std::cerr << ".";
-                return wc::read_blob(start, end, eof, word_counts);
+            [&record_words](
+                auto begin, auto end, bool eof
+            ) {
+                return wc::read_blob(begin, end, eof, record_words);
             },
-            [&word_counts]() {
-                wc::top_word_collection<10> top_words;
-                for(const auto & word_info : word_counts.words()) {
-                    top_words.add(word_info.first, word_info.second);
-                }
+            [&top_words]() {
                 std::cout << std::endl;
                 std::cout << "Top words: " << std::endl;
                 std::cout << std::endl;

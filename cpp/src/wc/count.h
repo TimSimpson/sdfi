@@ -116,12 +116,12 @@ public:
         counts[word] ++;
     }
 
-    const std::map<std::string, int> & words() const {
+    const std::map<std::string, std::size_t> & words() const {
         return counts;
     }
 
 private:
-    std::map<std::string, int> counts;
+    std::map<std::string, std::size_t> counts;
     std::string word;
 };
 
