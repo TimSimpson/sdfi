@@ -10,9 +10,10 @@ Building
 
 Prereqs:
 
-    git
-    CMake
-    A newer version of g++ or MSVC.
+    * git
+    * CMake
+    * A newer version of g++ or MSVC (note: so full testing has only been
+      performed on GCC / Linux).
 
 First run initialize all Git submodules:
 
