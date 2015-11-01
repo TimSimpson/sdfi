@@ -96,7 +96,7 @@ Server.
     8. my   3318784
     9. that 3060736
     10. in  3032064
-    Elapsed time: 596986ms
+    Elapsed time: 489159ms
 
 Here's the same result running worker processes on three Rackspace Cloud
 Servers, with one running the master process:
@@ -115,8 +115,7 @@ Servers, with one running the master process:
     8. my   3318784
     9. that 3060736
     10. in  3032064
-    Elapsed time: 195305ms
-
+    Elapsed time: 181320ms
 
 Future Plans
 ~~~~~~~~~~~~
