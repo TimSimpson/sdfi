@@ -144,13 +144,50 @@ private:
 };
 
 
+// Reads a line synchronously.
+std::string socket_read_line(boost::asio::ip::tcp::socket & socket) {
+    using boost::asio::buffer;
+    using boost::asio::read;
 
+    // Get header length
+    char header_bytes[header_size];
+    read(socket, buffer(header_bytes, header_size));
+    const size_t message_length = std::atoi(header_bytes);
+
+    // Read body
+    std::vector<char> body_bytes;
+    body_bytes.resize(message_length);
+    read(socket, buffer(body_bytes.data(), body_bytes.size()));
+
+    return std::string(body_bytes.data(),
+                       body_bytes.data() + body_bytes.size());
+}
+
+// Writes a line synchronously.
+void socket_write_line(boost::asio::ip::tcp::socket & socket,
+                       const std::string & message)
+{
+    using boost::asio::buffer;
+    using boost::asio::write;
+
+    // Write header.
+    char header_bytes[header_size];
+    std::sprintf(header_bytes, "%8d", static_cast<int>(message.length()));
+    write(socket, buffer(header_bytes, sizeof(header_bytes)));
+
+    // Write body.
+    write(socket, buffer(message.c_str(), message.size()));
+}
+
+// Client. Can synchronously send and receive string messages, and also has
+// an asynchronous receive function.
 class client {
 public:
     client(boost::asio::io_service & ioservice,
            const std::string host,
            const std::string port)
-    :   socket(ioservice)
+    :   socket(ioservice),
+        awaiting_async_response(false)
     {
         using boost::asio::connect;
         using boost::asio::ip::tcp;
@@ -171,29 +208,25 @@ public:
         }
     }
 
+    client(const client & other) = delete;
+    client & operator=(const client & other) = delete;
 
     std::string receive() {
-        //TODO: Eliminate copy-paste, this is nearly the same as read
-        using boost::asio::buffer;
-        using boost::asio::read;
-
-        // Get header length
-        char header_bytes[header_size];
-        read(socket, buffer(header_bytes, sizeof(header_bytes)));
-        const size_t message_length = std::atoi(header_bytes);
-
-        // Read body
-        std::vector<char> body_bytes;
-        body_bytes.resize(message_length);
-        read(socket, buffer(body_bytes.data(), body_bytes.size()));
-
-        return std::string(body_bytes.data(),
-                           body_bytes.data() + body_bytes.size());
+        ensure_sync_mode();
+        return socket_read_line(socket);
     }
 
+    void send(const std::string & message) {
+        ensure_sync_mode();
+        socket_write_line(socket, message);
+    }
+
+    // Asynchronously receives a response. After this is called, the client
+    // is in async mode and can't be called again.
     template<int buffer_size, typename F1, typename F2, typename F3>
     void async_receive(F1 on_read, F2 on_finished, F3 on_error)
     {
+        awaiting_async_response = true;
         std::make_shared<async_receiver<buffer_size, F1, F2, F3>>(
             std::move(socket),
             on_read,
@@ -201,25 +234,22 @@ public:
             on_error)->receive_async();
     }
 
-    void send(const std::string & message) {
-        //TODO: Eliminate copy-pasta
-
-        using boost::asio::buffer;
-        using boost::asio::write;
-
-        char header_bytes[header_size];
-        std::sprintf(header_bytes, "%8d", static_cast<int>(message.length()));
-        write(socket, buffer(header_bytes, sizeof(header_bytes)));
-        // Write body.
-        write(socket, buffer(message.c_str(), message.size()));
-    }
-
 private:
     boost::asio::ip::tcp::socket socket;
+    bool awaiting_async_response;
+
+    void ensure_sync_mode() {
+        // The async receive needs to own the socket after being called in
+        // case this class is destroyed, plus mixing the synchronous and
+        // async code could lead to problems anyway.
+        if (awaiting_async_response) {
+            throw std::runtime_error("Already waiting for async response.");
+        }
+    }
 };
 
 
-
+// Server. Can synchronously accept and respond to string messages.
 class server {
 public:
     server(int port)
@@ -234,39 +264,14 @@ public:
     server(const server & other) = delete;
     server & operator=(const server & other) = delete;
 
-    void write(const std::string & data) {
-        using boost::asio::buffer;
-        using boost::asio::write;
-
+    void send(const std::string & data) {
         ensure_started();
-
-        // Write header- make sure the length is 4.
-        char header_bytes[header_size];
-        std::sprintf(header_bytes, "%8d", static_cast<int>(data.length()));
-        write(socket, buffer(header_bytes, sizeof(header_bytes)));
-
-        // Write body.
-        write(socket, buffer(data.c_str(), data.size()));
+        socket_write_line(socket, data);
     }
 
-    std::string read() {
-        using boost::asio::buffer;
-        using boost::asio::read;
-
+    std::string receive() {
         ensure_started();
-
-        // Get header length
-        char header_bytes[header_size];
-        read(socket, buffer(header_bytes, header_size));
-        const size_t message_length = std::atoi(header_bytes);
-
-        // Read body
-        std::vector<char> body_bytes;
-        body_bytes.resize(message_length);
-        read(socket, buffer(body_bytes.data(), body_bytes.size()));
-
-        return std::string(body_bytes.data(),
-                           body_bytes.data() + body_bytes.size());
+        return socket_read_line(socket);
     }
 
 private:

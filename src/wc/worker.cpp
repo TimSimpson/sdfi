@@ -39,10 +39,10 @@ int main(int argc, const char * * args) {
             vector<string> files;
             cout << "Reading in directory list..." << endl;
 
-            string input = server.read();
+            string input = server.receive();
             while(input != ";]-done") {
                 files.push_back(input);
-                input = server.read();
+                input = server.receive();
             }
 
             // Read all words in the given directory.
@@ -69,7 +69,7 @@ int main(int argc, const char * * args) {
             auto s = stream.str();
 
             cout << "Responding... (size == " << s.length() << ")" << endl;
-            server.write(s);
+            server.send(s);
         }
     } catch(const exception & e) {
         cerr << "An error occured: " << e.what() << endl;

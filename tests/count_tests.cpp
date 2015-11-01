@@ -9,7 +9,6 @@ using namespace wc;
 
 
 TEST_CASE("word_counter", "[word_counter]") {
-
     word_counter counter;
     auto add_word = [&counter](const std::string & text) {
         counter(text.begin(), text.end());
