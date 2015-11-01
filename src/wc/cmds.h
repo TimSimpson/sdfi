@@ -1,4 +1,4 @@
-// Contains some helper utilities to run commands.
+// Contains some helper utilities for the various commands.
 
 #ifndef FILE_GUARD_WC_CMDS_H
 #define FILE_GUARD_WC_CMDS_H
@@ -13,14 +13,14 @@ using std::chrono::milliseconds;
 
 namespace wc {
 
-
-class timer {
+// This class prints out the elapsed time.
+class stop_watch {
 public:
-    timer()
+    stop_watch()
     :   start_time(std::chrono::high_resolution_clock::now()) {
     }
 
-    ~timer() {
+    void print_time() {
         using std::chrono::duration_cast;
         using std::chrono::milliseconds;
 
@@ -29,9 +29,6 @@ public:
                   << duration_cast<milliseconds>(end_time - start_time).count()
                   << "ms" << std::endl;
     }
-
-    timer(const timer & rhs) = delete;
-    timer & operator=(const timer & rhs) = delete;
 
 private:
     using hrclock = std::chrono::high_resolution_clock;

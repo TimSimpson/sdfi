@@ -1,4 +1,5 @@
-// Accepts a directory as it's first argument and reads all files.
+// Accepts a directory as it's first argument and reads all files before
+// printing out the top 10 most frequently recurring words.
 
 #include <wc/cmds.h>
 #include <wc/count.h>
@@ -23,7 +24,7 @@ int main(int argc, const char * * args) {
         return 1;
     }
 
-    wc::timer t;
+    wc::stop_watch watch;
 
     wc::word_counter counter;
     auto processor = [&counter](auto begin, auto end, bool eof) {
@@ -58,4 +59,5 @@ int main(int argc, const char * * args) {
         cout << i + 1 << ". " << word_info.first
              << "\t" << word_info.second << endl;
     }
+    watch.print_time();
 }

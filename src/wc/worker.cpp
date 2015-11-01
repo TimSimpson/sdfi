@@ -1,5 +1,8 @@
-// Starts a server on the given port and waits for an action.
+// Starts a server on the given port and waits to receive a list of files,
+// which it reads and then responds with a mapping between all words in the
+// files and their count.
 
+#include <wc/cmds.h>
 #include <wc/count.h>
 #include <wc/filesystem.h>
 #include <wc/tcp.h>
@@ -40,6 +43,7 @@ int main(int argc, const char * * args) {
             cout << "Reading in directory list..." << endl;
 
             string input = server.receive();
+            wc::stop_watch watch;
             while(input != ";]-done") {
                 files.push_back(input);
                 input = server.receive();
@@ -70,6 +74,7 @@ int main(int argc, const char * * args) {
 
             cout << "Responding... (size == " << s.length() << ")" << endl;
             server.send(s);
+            watch.print_time();
         }
     } catch(const exception & e) {
         cerr << "An error occured: " << e.what() << endl;

@@ -52,6 +52,14 @@ Iterator read_blob(Iterator begin, Iterator end, bool eof, Func & receive_word)
     return end;
 }
 
+// Repeatedly reads from an input stream into a buffer it creates, calling a
+// processor function to look at the contents of the buffer during each
+// iteration.
+// This processor function is passed the start and end iterators to a fresh
+// chunk of data and a boolean argument to signify the end of the stream, and
+// is expected to pass back an iterator to one element past the last position
+// in the buffer it was able to process.
+// See the tests for more details.
 template<int buffer_size, typename InputStream, typename Func>
 void read_using_buffer(InputStream & input_stream, Func & process_text) {
     char buffer[buffer_size];
@@ -81,13 +89,13 @@ void read_using_buffer(InputStream & input_stream, Func & process_text) {
             // data at the start so it can try again.
             std::copy(last_unprocessed_pos, end_itr, buffer);
             // TODO: Consider passing the previous itr back into process_text-
-            //       then this could be skipped.
+            //       that way it wouldn't have to reparse the old data.
             start_itr = buffer + (end_itr - last_unprocessed_pos);
         }
     }
 }
 
-// Counts words, keeping a map of all word counts and the top ten.
+// Collects words in a word_map.
 class word_counter {
 public:
     word_counter()

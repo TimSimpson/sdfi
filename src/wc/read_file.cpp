@@ -1,4 +1,6 @@
-// Accepts a filename as input or reads from stdin.
+// Accepts a filename as it's first argument or reads from standard in.
+// Reads all text and prints out all words and their counts followed by the
+// top ten most frequently seen words.
 
 #include <wc/count.h>
 #include <wc/top.h>

@@ -1,4 +1,7 @@
-// Connects to a worker and tells it what to do.
+// Given a directory and one or more worker process, iterates the directories
+// and sends each worker process a fraction of the files. After receiving the
+// word counts from each process, combines them all and prints a list of the
+// top 10 words seen in all files.
 
 #include <wc/cmds.h>
 #include <wc/count.h>
@@ -157,7 +160,7 @@ int main(int argc, const char * * args) {
              << " directory host port [host port...]" << endl;
         return 1;
     }
-    wc::timer t;
+    wc::stop_watch watch;
 
     string directory(args[1]);
     vector<worker> workers;
@@ -165,10 +168,13 @@ int main(int argc, const char * * args) {
         workers.emplace_back(args[i], args[i + 1]);
     }
 
+    int result = 1;
     try {
-        return word_count(directory, workers);
+        result = word_count(directory, workers);
     } catch(const exception & e) {
         cerr << "An error occured: " << e.what() << endl;
-        return 1;
+        result = 1;
     }
+    watch.print_time();
+    return result;
 }
