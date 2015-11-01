@@ -1,5 +1,6 @@
 // Connects to a worker and tells it what to do.
 
+#include <wc/cmds.h>
 #include <wc/count.h>
 #include <wc/tcp.h>
 #include <wc/top.h>
@@ -61,6 +62,9 @@ int main(int argc, const char * * args) {
              << " directory host port [host port...]" << endl;
         return 1;
     }
+
+    wc::timer t;
+
     string directory(args[1]);
     vector<worker> workers;
 
@@ -158,5 +162,5 @@ int word_count(const std::string & directory, vector<worker> & workers) {
         cout << i + 1 << ". " << word_info.first
              << "\t" << word_info.second << "\n";
     }
-
+    return 0;
 }

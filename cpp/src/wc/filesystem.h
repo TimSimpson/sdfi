@@ -29,12 +29,17 @@ void read_directory(Processor & processor,
                     const int worker_index = 0,
                     const int worker_count = 1) {
     using boost::filesystem::current_path;
+    using boost::filesystem::exists;
     using boost::filesystem::is_regular_file;
     using boost::filesystem::path;
     using boost::filesystem::recursive_directory_iterator;
 
     int itr_count = -1;
-    path root = current_path() / directory;
+    path root(directory);
+    if (!exists(directory)) {
+        log << "\"" << directory << "\" does not exist." << std::endl;
+        throw std::runtime_error("Directory not found.");
+    }
     for (recursive_directory_iterator itr(root);
          itr != recursive_directory_iterator{};
          ++ itr) {

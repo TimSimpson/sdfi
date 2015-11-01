@@ -30,10 +30,9 @@ int main(int argc, const char * * args) {
 
     const size_t buffer_size = 10 * 1024;
 
-    server server(port);
-
     try
     {
+        server server(port);
         while(true)
         {
             int worker_index = boost::lexical_cast<int>(server.read());
