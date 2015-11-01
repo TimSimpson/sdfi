@@ -60,8 +60,11 @@ int main(int argc, const char * * args) {
             std::cout << "Responding... (size == " << s.length() << ")"
                       << std::endl;
             server.write(s);
+            //server.close();
+            break;
         }
     } catch(const std::exception & e) {
         std::cerr << "An error occured: " << e.what() << std::endl;
+        return 1;
     }
 }

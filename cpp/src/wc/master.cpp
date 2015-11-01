@@ -18,7 +18,7 @@ struct worker {
 };
 
 
-void word_count(const std::string & directory, const vector<worker> & workers);
+int word_count(const std::string & directory, const vector<worker> & workers);
 
 
 int main(int argc, const char * * args) {
@@ -37,42 +37,47 @@ int main(int argc, const char * * args) {
         workers.push_back(w);
     }
 
-    word_count(directory, workers);
+    return word_count(directory, workers);
 }
 
-void word_count(const std::string & directory, const vector<worker> & workers) {
+int word_count(const std::string & directory, const vector<worker> & workers) {
     try {
         wc::client client(workers[0].host, workers[0].port);
         client.send(directory);
-        string response = client.receive();
-        // std::cout << response << std::endl;
 
-        wc::top_word_collection<10> top_words;
-        string last_word;
-        bool is_odd = false;
-        auto record_top_words = [&top_words, &last_word, &is_odd](
-            auto begin, auto end
-        ) {
-            is_odd = !is_odd;
-            if (is_odd) {
-                last_word = string(begin, end);
-            } else {
-                int count = boost::lexical_cast<int>(string(begin, end));
-                top_words.add(last_word, count);
+        wc::word_counter word_counts;
+
+        bool error_occured = false;
+
+        string response = client.async_receive<1024 * 4>(
+            [&word_counts](auto start, auto end, bool eof) {
+                std::cerr << ".";
+                return wc::read_blob(start, end, eof, word_counts);
+            },
+            [&word_counts]() {
+                wc::top_word_collection<10> top_words;
+                for(const auto & word_info : word_counts.words()) {
+                    top_words.add(word_info.first, word_info.second);
+                }
+                std::cout << std::endl;
+                std::cout << "Top words: " << std::endl;
+                std::cout << std::endl;
+                for(int i = 0; i < top_words.total_words(); ++i) {
+                    const auto word_info = top_words.get_words()[i];
+                    std::cout << i + 1 << ". " << word_info.first
+                              << "\t" << word_info.second << "\n";
+                }
+            },
+            [&error_occured](const std::string & msg) {
+                error_occured = true;
+                std::cerr << msg << std::endl;
             }
-        };
-
-        wc::read_blob(response.begin(), response.end(), true, record_top_words);
-
-        std::cout << std::endl;
-        std::cout << "Top words: " << std::endl;
-        std::cout << std::endl;
-        for(int i = 0; i < top_words.total_words(); ++i) {
-            const auto word_info = top_words.get_words()[i];
-            std::cout << i + 1 << ". " << word_info.first
-                      << "\t" << word_info.second << "\n";
+        );
+        if (error_occured) {
+            return 1;
         }
     } catch(const std::exception & e) {
         std::cerr << "An error occured: " << e.what() << std::endl;
+        return 1;
     }
 }
