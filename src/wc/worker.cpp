@@ -48,7 +48,9 @@ int main(int argc, const char * * args) {
 
             // TODO: Using a streamstream is pretty dopey because the entirety
             //       of the message has to be buffered in memory, but it
-            //       doesn't seem to affect anything. Still, look into it.
+            //       doesn't seem to affect performance. However in theory
+            //       this could cause problems if you wanted to look through
+            //       arbitrary files with a huge number of potential "words."
 
             // Create the giant message in memory.
             stringstream stream;
