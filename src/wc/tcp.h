@@ -193,8 +193,7 @@ public:
     }
 
     template<int buffer_size, typename F1, typename F2, typename F3>
-    std::string async_receive(
-        F1 on_read, F2 on_finished, F3 on_error)
+    void async_receive(F1 on_read, F2 on_finished, F3 on_error)
     {
         std::make_shared<async_receiver<buffer_size, F1, F2, F3>>(
             std::move(socket),

@@ -11,6 +11,7 @@
 using std::endl;
 using std::cerr;
 using std::cout;
+using std::size_t;
 using std::string;
 using std::vector;
 
@@ -41,8 +42,7 @@ struct worker {
             last_word = string(start, end);
         } else {
             string count_str(start, end);
-            std::size_t count =
-                boost::lexical_cast<std::size_t>(count_str);
+            size_t count = boost::lexical_cast<size_t>(count_str);
             results[last_word] = count;
         }
     }
@@ -84,7 +84,7 @@ int main(int argc, const char * * args) {
 // Tells a worker to start counting words. The output of this function
 // is the second argument.
 void start_worker(boost::asio::io_service & ioservice, worker & worker,
-                  int index, int worker_count, const string & directory)
+                  size_t index, size_t worker_count, const string & directory)
 {
     cout << "Starting worker " << worker.host << "..." << endl;
     wc::client client(ioservice, worker.host, worker.port);
@@ -93,7 +93,7 @@ void start_worker(boost::asio::io_service & ioservice, worker & worker,
     client.send(std::to_string(worker_count));
     client.send(directory);
 
-    string response = client.async_receive<1024 * 4>(
+    client.async_receive<1024 * 4>(
         [&worker](
             auto begin, auto end, bool eof
         ) {
@@ -113,7 +113,7 @@ void start_worker(boost::asio::io_service & ioservice, worker & worker,
 int word_count(const std::string & directory, vector<worker> & workers) {
     boost::asio::io_service ioservice;
 
-    for (int i = 0; i < workers.size(); ++ i) {
+    for (size_t i = 0; i < workers.size(); ++ i) {
         start_worker(ioservice, workers[i], i, workers.size(), directory);
     }
 

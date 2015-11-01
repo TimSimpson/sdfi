@@ -14,19 +14,21 @@ namespace wc {
 template<int top_count>
 class top_word_collection {
 public:
-    using pair = std::pair<std::string, int>;
+    using pair = std::pair<std::string, std::size_t>;
 
     top_word_collection()
     :   min_count(0),
         words()
     {}
 
-    int get_min_count() const {
+    std::size_t get_min_count() const {
         return min_count;
     }
 
-    void add(const std::string & word, const int count) {
-        // ASSERT count >= min_count
+    void add(const std::string & word, const std::size_t count) {
+        if (min_count > count) {
+            return;  // Ignore
+        }
         pair new_value(word, count);
         // Find first position not greater than count.
         auto position = std::lower_bound(
@@ -37,12 +39,6 @@ public:
         );
         words.insert(position, new_value);
         trim();
-        // ASSERT min_count <= top_words.back().second
-        // Update minimum if it's just been replaced.
-        if (total_words() >= top_count)
-        {
-            min_count = words.back().second;
-        }
     }
 
     const std::vector<pair> & get_words() const {
@@ -55,25 +51,30 @@ public:
     }
 
 private:
-    int min_count;
+    std::size_t min_count;
     std::vector<pair> words;
 
     void trim() {
         // Ensure that the number of words were storing only exceeds the
         // requred count if the last words are ties.
-        if (words.size() <= top_count) {
+        if (words.size() < top_count) {
             return;
         }
-        // We could just erase the end of the vector but we want to include
-        // words that are tieing for last place. The code below finds the first
-        // non unique item.
-        const int min_count = words[top_count - 1].second;
 
-        auto itr = words.begin() + top_count;
-        while(itr != words.end() && itr->second == min_count) {
-            ++ itr;
+        min_count = words[top_count - 1].second;
+
+        if (words.size() > top_count) {
+            // We could just erase the end of the vector but we want to include
+            // words that are tieing for last place. The code below finds the
+            // first non unique item.
+            min_count = words[top_count - 1].second;
+
+            auto itr = words.begin() + top_count;
+            while(itr != words.end() && itr->second == min_count) {
+                ++ itr;
+            }
+            words.erase(itr, words.end());
         }
-        words.erase(itr, words.end());
     }
 };
 

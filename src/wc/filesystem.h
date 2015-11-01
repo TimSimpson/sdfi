@@ -12,7 +12,7 @@ namespace wc {
 
 // Reads a file using read_using_buffer, sending it to a processor function.
 template<int buffer_size, typename Processor>
-bool read_file(Processor & processor, const std::string & full_path) {
+void read_file(Processor & processor, const std::string & full_path) {
     std::ifstream actual_file(full_path, std::ifstream::binary);
     actual_file.exceptions(std::ifstream::badbit);
     read_using_buffer<buffer_size>(actual_file, processor);

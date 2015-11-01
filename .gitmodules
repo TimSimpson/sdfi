@@ -1,3 +1,6 @@
 [submodule "lib/tinydir"]
 	path = lib/tinydir
 	url = https://github.com/cxong/tinydir.git
+[submodule "lib/catch"]
+	path = lib/catch
+	url = https://github.com/philsquared/Catch.git
