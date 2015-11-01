@@ -12,17 +12,25 @@ using std::string;
 using std::vector;
 
 
-// The workers send out a series of words and their counts over and over.
-// This class records that into a map.
-class word_recorder {
-public:
-    word_recorder(wc::word_map & results)
-    :   is_odd(false),
-        last_word(),
-        results(results)
+// Contains all of the info / state for a worker.
+struct worker {
+    string host;
+    string port;
+    bool error_occured;
+    bool finished;
+    wc::word_map results;
+
+    worker(const string & host, const string & port)
+    :   host(host),
+        port(port),
+        error_occured(false),
+        finished(false),
+        results()
     {
     }
 
+    // The workers send out a series of words and their counts over and over.
+    // This function captures that data, recording it into a map.
     template<typename Iterator>
     void operator()(Iterator start, Iterator end) {
         is_odd = !is_odd;
@@ -35,32 +43,10 @@ public:
             results[last_word] = count;
         }
     }
+
 private:
     bool is_odd;
     string last_word;
-    wc::word_map & results;
-
-};
-
-
-// Contains all of the info / state for a worker.
-struct worker {
-    string host;
-    string port;
-    bool error_occured;
-    bool finished;
-    wc::word_map results;
-    word_recorder recorder;
-
-    worker(const string & host, const string & port)
-    :   host(host),
-        port(port),
-        error_occured(false),
-        finished(false),
-        results(),
-        recorder(results)
-    {
-    }
 };
 
 
@@ -102,7 +88,7 @@ void start_worker(boost::asio::io_service & ioservice, worker & worker,
         [&worker](
             auto begin, auto end, bool eof
         ) {
-            return wc::read_blob(begin, end, eof, worker.recorder);
+            return wc::read_blob(begin, end, eof, worker);
         },
         [&worker]() {
             worker.finished = true;
@@ -118,8 +104,8 @@ void start_worker(boost::asio::io_service & ioservice, worker & worker,
 int word_count(const std::string & directory, vector<worker> & workers) {
     boost::asio::io_service ioservice;
 
-    for (auto worker: workers) {
-        start_worker(ioservice, worker, directory);
+    for (int i = 0; i < workers.size(); ++ i) {
+        start_worker(ioservice, workers[i], directory);
     }
 
     std::cout << "Waiting..." << std::endl;

@@ -58,7 +58,7 @@ public:
             boost::asio::buffer(write_start, write_length),
             [this, self] (const boost::system::error_code & ec,
                           std::size_t length) {
-                _receive(ec, length);
+                this->_receive(ec, length);
             }
         );
     }
@@ -258,8 +258,8 @@ public:
         ensure_started();
 
         // Get header length
-        char header_bytes[4];
-        read(socket, buffer(header_bytes, 4));
+        char header_bytes[header_size];
+        read(socket, buffer(header_bytes, header_size));
         const size_t message_length = std::atoi(header_bytes);
 
         // Read body
