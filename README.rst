@@ -78,7 +78,8 @@ each machine a worker process runs on.
 Performance
 ~~~~~~~~~~~
 
-Here are my results from using "read_directory" on my somewhat powerful desktop:
+Here are my results from using "read_directory" on a single Rackspace Cloud
+Server.
 
 .. code-block:: bash
 
@@ -94,10 +95,10 @@ Here are my results from using "read_directory" on my somewhat powerful desktop:
     8. my   3318784
     9. that 3060736
     10. in  3032064
-    Elapsed time: 222858ms
+    Elapsed time: 596986ms
 
-
-Here is is using five worker processes and a master on VM:
+Here's the same result running worker processes on three Rackspace Cloud
+Servers, with one running the master process:
 
 .. code-block:: bash
 
@@ -113,26 +114,17 @@ Here is is using five worker processes and a master on VM:
     8. my   3318784
     9. that 3060736
     10. in  3032064
-    Elapsed time: 218722ms
+    Elapsed time: 195305ms
 
 
-Finally, here is the result running on three Rackspace Cloud Servers:
-
-.. code-block:: bash
-
-    TODO
-
-
-Potential Improvements
-~~~~~~~~~~~~~~~~~~~~~~
-
-HAVE TO MAKE THE MASTER PROCESS SEND LIST OF DIRECTORIES TO WORKERS BECAUSE
-THE ORDER ISN'T GUARANTEED.
+Future Plans
+~~~~~~~~~~~~
 
 Because work is split via files, luck may have it that a worker might end up
 having to read several large files while its peers read smaller ones and
-finish earlier. If the workers could communicate back at regular intervals it
-would be possible to better distribute the load between them.
+finish earlier. If the workers could instead receive one (or maybe a handful)
+of files from the master and ask for more as they finished the workload would
+probably be better distributed in the presence of infrequent, very large files.
 
 Currently all workers create a massive string to send back to the master. While
 there haven't been any noticable problems doing this in theory it would mean
