@@ -1,9 +1,11 @@
 #!/bin/bash
+##############################################################################
+#  This script downloads the works of Shakespeare and then duplicates them
+#  repeatedly in "/books". The resulting directory is 1.3G.
+##############################################################################
+
 set -e
 set -x
-
-# sudo apt-get install libboost1.58-all-dev
-# sudo apt-get install cmake
 
 mkdir -p /books
 cd /books
@@ -11,17 +13,6 @@ cd /books
 wget http://homepages.ihug.co.nz/~leonov/shakespeare.tar.bz2
 tar xvf shakespeare.tar.bz2
 rm shakespeare.tar.bz2
-
-# mkdir a
-# mv Shakespeare a/
-# cp -rf a b
-# mkdir 1
-# mv -rf a 1/
-# mv -rf b 1/
-# mkdir a
-# mv 1 a/
-# cp -rf a/1 a/2
-
 
 function double() {
     local old_dir="${1}"

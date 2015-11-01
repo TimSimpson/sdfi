@@ -8,14 +8,14 @@
 #include <iostream>
 #include <boost/lexical_cast.hpp>
 
-
-using std::endl;
 using std::cerr;
 using std::cout;
+using std::endl;
+using std::exception;
+using boost::lexical_cast;
 using std::size_t;
 using std::string;
 using std::vector;
-
 
 // Contains all of the info / state for a worker.
 struct worker {
@@ -44,7 +44,7 @@ struct worker {
             last_word = string(start, end);
         } else {
             string count_str(start, end);
-            size_t count = boost::lexical_cast<size_t>(count_str);
+            size_t count = lexical_cast<size_t>(count_str);
             results[last_word] = count;
         }
     }
@@ -53,35 +53,6 @@ private:
     bool is_odd;
     string last_word;
 };
-
-
-int word_count(const std::string & directory, vector<worker> & workers);
-
-
-int main(int argc, const char * * args) {
-    if (argc < 4) {
-        cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
-             << " directory host port [host port...]" << endl;
-        return 1;
-    }
-
-    wc::timer t;
-
-    string directory(args[1]);
-    vector<worker> workers;
-
-    for (int i = 2; i + 1 < argc; i+= 2) {
-        workers.emplace_back(args[i], args[i + 1]);
-    }
-
-    try {
-        return word_count(directory, workers);
-    } catch(const std::exception & e) {
-        cerr << "An error occured: " << e.what() << endl;
-        return 1;
-    }
-}
-
 
 // Tells a worker to start counting words. The output of this function
 // is the second argument.
@@ -104,16 +75,18 @@ void start_worker(boost::asio::io_service & ioservice, worker & worker)
         [&worker]() {
             worker.finished = true;
         },
-        [&worker](const std::string & msg) {
+        [&worker](const string & msg) {
             worker.error_occured = true;
             cerr << msg << endl;
         }
     );
 }
 
-
-int word_count(const std::string & directory, vector<worker> & workers) {
-    // split up directory
+int word_count(const string & directory, vector<worker> & workers) {
+    // Read directory and create list of files for each worker process.
+    // TODO: Sending the files one at a time to each process, letting them
+    //       respond, then sending new ones would probably distribute the
+    //       work load better in the presence of infrequent but large files.
 
     int file_count = -1;
     auto record_file = [&file_count, &workers](const string & file){
@@ -130,7 +103,8 @@ int word_count(const std::string & directory, vector<worker> & workers) {
     }
 
     cout << "Waiting..." << endl;
-    // Wait for everyone to finish.
+    // The line below will wait until all of the receiver Boost ASIO async code
+    // has executed.
     ioservice.run();
 
     cout << "Finished..." << endl;
@@ -175,4 +149,26 @@ int word_count(const std::string & directory, vector<worker> & workers) {
              << "\t" << word_info.second << "\n";
     }
     return 0;
+}
+
+int main(int argc, const char * * args) {
+    if (argc < 4) {
+        cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
+             << " directory host port [host port...]" << endl;
+        return 1;
+    }
+    wc::timer t;
+
+    string directory(args[1]);
+    vector<worker> workers;
+    for (int i = 2; i + 1 < argc; i+= 2) {
+        workers.emplace_back(args[i], args[i + 1]);
+    }
+
+    try {
+        return word_count(directory, workers);
+    } catch(const exception & e) {
+        cerr << "An error occured: " << e.what() << endl;
+        return 1;
+    }
 }

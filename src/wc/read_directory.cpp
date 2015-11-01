@@ -13,6 +13,7 @@
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::exception;
 using std::string;
 
 int main(int argc, const char * * args) {
@@ -37,8 +38,8 @@ int main(int argc, const char * * args) {
     };
 
     try {
-        wc::read_directory(file_handler, args[1], std::cerr);
-    } catch(const std::exception & e) {
+        wc::read_directory(file_handler, args[1], cerr);
+    } catch(const exception & e) {
         cerr << "Error reading directory: " << e.what() << endl;
         return 2;
     }
@@ -46,13 +47,12 @@ int main(int argc, const char * * args) {
     wc::top_word_collection<10> top_words;
 
     for(const auto & word_info : counter.words()) {
-        // std::cout << word_info.first << "\t" << word_info.second << "\n";
         top_words.add(word_info.first, word_info.second);
     }
 
-    cout << endl;
-    cout << "Top words: " << endl;
-    cout << endl;
+    cout << endl
+         << "Top words: " << endl
+         << endl;
     for(int i = 0; i < top_words.total_words(); ++i) {
         const auto word_info = top_words.get_words()[i];
         cout << i + 1 << ". " << word_info.first

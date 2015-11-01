@@ -1,7 +1,6 @@
 #ifndef FILE_GUARD_WC_COUNT_H
 #define FILE_GUARD_WC_COUNT_H
 
-
 #include <algorithm>
 #include <cctype>
 #include <map>
@@ -10,12 +9,9 @@
 #include <vector>
 #include <utility>
 
-
 namespace wc {
 
-
 using word_map = std::map<std::string, std::size_t>;
-
 
 // Returns true if C is part of a word.
 inline bool is_word_character(char c) {
@@ -23,7 +19,6 @@ inline bool is_word_character(char c) {
             || (c >= 'a' && c <= 'z')
             || (c >= '0' && c <= '9'));
 }
-
 
 // Reads the given blob into the receiver. Returns the start of the last word
 // it was reading, or the end iterator if it finished.
@@ -56,16 +51,6 @@ Iterator read_blob(Iterator begin, Iterator end, bool eof, Func & receive_word)
     // tell the caller we've finished with the text.
     return end;
 }
-
-
-// last_pos = reader(start_itr, end_itr)
-
-// [&file](start_itr, end_itr) {
-//      file.read(start_itr, end_itr - start_itr);
-//      const auto length = file.gcount();
-//      return start_itr + length;
-// }
-
 
 template<int buffer_size, typename InputStream, typename Func>
 void read_using_buffer(InputStream & input_stream, Func & process_text) {
@@ -102,7 +87,6 @@ void read_using_buffer(InputStream & input_stream, Func & process_text) {
     }
 }
 
-
 // Counts words, keeping a map of all word counts and the top ten.
 class word_counter {
 public:
@@ -128,8 +112,6 @@ private:
     std::string word;
 };
 
-
 }  // end namespace wc
-
 
 #endif

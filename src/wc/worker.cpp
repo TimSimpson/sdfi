@@ -11,17 +11,18 @@
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::exception;
+using boost::lexical_cast;
 using std::string;
 using std::stringstream;
 using std::vector;
 
 int main(int argc, const char * * args) {
     if (argc < 2) {
-        std::cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
-                  << " port" << endl;
+        cerr << "Usage:" << ((argc > 0) ? args[0] : "prog") << " port" << endl;
         return 1;
     }
-    int port = boost::lexical_cast<int>(args[1]);
+    int port = lexical_cast<int>(args[1]);
     const size_t buffer_size = 10 * 1024;
 
     try
@@ -70,7 +71,7 @@ int main(int argc, const char * * args) {
             cout << "Responding... (size == " << s.length() << ")" << endl;
             server.write(s);
         }
-    } catch(const std::exception & e) {
+    } catch(const exception & e) {
         cerr << "An error occured: " << e.what() << endl;
         return 1;
     }

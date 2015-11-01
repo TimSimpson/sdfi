@@ -1,4 +1,9 @@
 #!/bin/bash
+##############################################################################
+#  This script installs all dependencies necessary to make the project run
+#  on Ubuntu 15.10 (Wily Werewolf).
+##############################################################################
+
 set -e
 set -x
 

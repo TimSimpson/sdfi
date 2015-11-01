@@ -1,14 +1,11 @@
 #ifndef FILE_GUARD_WC_FILESYSTEM_H
 #define FILE_GUARD_WC_FILESYSTEM_H
 
-
 #include <fstream>
 #include <string>
 #include <boost/filesystem.hpp>
 
-
 namespace wc {
-
 
 // Reads a file using read_using_buffer, sending it to a processor function.
 template<int buffer_size, typename Processor>
@@ -17,10 +14,6 @@ void read_file(Processor & processor, const std::string & full_path) {
     actual_file.exceptions(std::ifstream::badbit);
     read_using_buffer<buffer_size>(actual_file, processor);
 }
-
-// index, worker_count
-// count = 0;
-// (count % worker_count)
 
 template<typename FileHandler, typename LogStream>
 void read_directory(FileHandler & file_handler,
@@ -53,8 +46,6 @@ void read_directory(FileHandler & file_handler,
         }
     }
 }
-
-
 
 } // end wc namespace
 
