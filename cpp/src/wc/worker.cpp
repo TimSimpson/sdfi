@@ -36,12 +36,15 @@ int main(int argc, const char * * args) {
     {
         while(true)
         {
+            int worker_index = boost::lexical_cast<int>(server.read());
+            int worker_count = boost::lexical_cast<int>(server.read());
             string directory = server.read();
 
             // Read all words in the given directory.
             std::cout << "Reading directory " << directory << "..."
                       << std::endl;
-            wc::read_directory<buffer_size>(processor, directory, std::cerr);
+            wc::read_directory<buffer_size>(processor, directory, std::cerr,
+                                            worker_index, worker_count);
             std::cout << "Finished." << std::endl;
 
             // TODO: Using a streamstream is pretty dopey because the entirety

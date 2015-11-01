@@ -78,10 +78,13 @@ int main(int argc, const char * * args) {
 // Tells a worker to start counting words. The output of this function
 // is the second argument.
 void start_worker(boost::asio::io_service & ioservice, worker & worker,
-                  const string & directory)
+                  int index, int worker_count, const string & directory)
 {
     std::cout << "Starting worker " << worker.host << "..." << std::endl;
     wc::client client(ioservice, worker.host, worker.port);
+
+    client.send(std::to_string(index));
+    client.send(std::to_string(worker_count));
     client.send(directory);
 
     string response = client.async_receive<1024 * 4>(
@@ -105,12 +108,30 @@ int word_count(const std::string & directory, vector<worker> & workers) {
     boost::asio::io_service ioservice;
 
     for (int i = 0; i < workers.size(); ++ i) {
-        start_worker(ioservice, workers[i], directory);
+        start_worker(ioservice, workers[i], i, workers.size(), directory);
     }
 
     std::cout << "Waiting..." << std::endl;
     // Wait for everyone to finish.
     ioservice.run();
+
+    std::cout << "Finished..." << std::endl;
+    for (const auto worker : workers) {
+        if (worker.error_occured) {
+            std::cerr << "An error occured on " << worker.host << " "
+                      << worker.port << ". Results are invalid. :("
+                      << std::endl;
+            return 2;
+        }
+        if (!worker.finished) {
+            std::cerr << "Worker didn't finish: " << worker.host << " "
+                      << worker.port << "."
+                      << std::endl;
+            return 2;
+        }
+    }
+
+    std::cout << "Performing final count..." << std::endl;
 
     // Commandeer the first element's results and use it for the running total.
     wc::word_map totals = workers[0].results;

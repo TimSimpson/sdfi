@@ -18,21 +18,33 @@ bool read_file(Processor & processor, const std::string & full_path) {
     read_using_buffer<buffer_size>(actual_file, processor);
 }
 
+// index, worker_count
+// count = 0;
+// (count % worker_count)
 
 template<int buffer_size, typename Processor, typename LogStream>
-void read_directory(Processor & processor, const std::string & directory,
-                    LogStream & log) {
+void read_directory(Processor & processor,
+                    const std::string & directory,
+                    LogStream & log,
+                    const int worker_index = 0,
+                    const int worker_count = 1) {
     using boost::filesystem::current_path;
     using boost::filesystem::is_regular_file;
     using boost::filesystem::path;
     using boost::filesystem::recursive_directory_iterator;
 
+    int itr_count = -1;
     path root = current_path() / directory;
     for (recursive_directory_iterator itr(root);
          itr != recursive_directory_iterator{};
          ++ itr) {
         path file_path(*itr);
         if (is_regular_file(file_path)) {
+            // Divy up files in a directory if using multiple workers.
+            itr_count ++;
+            if ((itr_count % worker_count) != worker_index) {
+                continue;
+            }
             log << "Reading file " << file_path << "..." << std::endl;
             try {
                 wc::read_file<buffer_size>(processor, file_path.string());
