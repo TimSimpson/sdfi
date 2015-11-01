@@ -148,9 +148,10 @@ private:
 
 class client {
 public:
-    client(const std::string host, const std::string port)
-    :   ioservice(),
-        socket(this->ioservice)
+    client(boost::asio::io_service & ioservice,
+           const std::string host,
+           const std::string port)
+    :   socket(ioservice)
     {
         using boost::asio::connect;
         using boost::asio::ip::tcp;
@@ -200,7 +201,6 @@ public:
             on_read,
             on_finished,
             on_error)->receive_async();
-        ioservice.run();
     }
 
     void send(const std::string & message) {
@@ -217,7 +217,6 @@ public:
     }
 
 private:
-    boost::asio::io_service ioservice;
     boost::asio::ip::tcp::socket socket;
 };
 

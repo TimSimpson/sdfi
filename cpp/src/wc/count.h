@@ -14,6 +14,9 @@
 namespace wc {
 
 
+using word_map = std::map<std::string, std::size_t>;
+
+
 // Returns true if C is part of a word.
 inline bool is_word_character(char c) {
     return ((c >= 'A' && c <= 'Z')
@@ -116,12 +119,12 @@ public:
         counts[word] ++;
     }
 
-    const std::map<std::string, std::size_t> & words() const {
+    const word_map & words() const {
         return counts;
     }
 
 private:
-    std::map<std::string, std::size_t> counts;
+    word_map counts;
     std::string word;
 };
 
