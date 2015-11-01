@@ -22,19 +22,16 @@ void read_file(Processor & processor, const std::string & full_path) {
 // count = 0;
 // (count % worker_count)
 
-template<int buffer_size, typename Processor, typename LogStream>
-void read_directory(Processor & processor,
+template<typename FileHandler, typename LogStream>
+void read_directory(FileHandler & file_handler,
                     const std::string & directory,
-                    LogStream & log,
-                    const int worker_index = 0,
-                    const int worker_count = 1) {
+                    LogStream & log) {
     using boost::filesystem::current_path;
     using boost::filesystem::exists;
     using boost::filesystem::is_regular_file;
     using boost::filesystem::path;
     using boost::filesystem::recursive_directory_iterator;
 
-    int itr_count = -1;
     path root(directory);
     if (!exists(directory)) {
         log << "\"" << directory << "\" does not exist." << std::endl;
@@ -46,13 +43,8 @@ void read_directory(Processor & processor,
         path file_path(*itr);
         if (is_regular_file(file_path)) {
             // Divy up files in a directory if using multiple workers.
-            itr_count ++;
-            if ((itr_count % worker_count) != worker_index) {
-                continue;
-            }
-            log << "Reading file " << file_path << "..." << std::endl;
             try {
-                wc::read_file<buffer_size>(processor, file_path.string());
+                file_handler(file_path.string());
             } catch(const std::length_error &) {
                 log << "A word in file \"" << file_path << "\" was too "
                     "large to be processed." << std::endl;

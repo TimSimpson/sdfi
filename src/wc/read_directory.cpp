@@ -31,8 +31,13 @@ int main(int argc, const char * * args) {
 
     const size_t buffer_size = 10 * 1024;
 
+    auto file_handler = [&processor](const string full_path) {
+        cout << "Reading file \"" << full_path << "\"..." << endl;
+        wc::read_file<buffer_size>(processor, full_path);
+    };
+
     try {
-        wc::read_directory<buffer_size>(processor, args[1], std::cerr);
+        wc::read_directory(file_handler, args[1], std::cerr);
     } catch(const std::exception & e) {
         cerr << "Error reading directory: " << e.what() << endl;
         return 2;

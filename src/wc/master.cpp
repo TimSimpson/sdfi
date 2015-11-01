@@ -2,6 +2,7 @@
 
 #include <wc/cmds.h>
 #include <wc/count.h>
+#include <wc/filesystem.h>
 #include <wc/tcp.h>
 #include <wc/top.h>
 #include <iostream>
@@ -20,6 +21,7 @@ using std::vector;
 struct worker {
     string host;
     string port;
+    vector<string> files;
     bool error_occured;
     bool finished;
     wc::word_map results;
@@ -83,17 +85,17 @@ int main(int argc, const char * * args) {
 
 // Tells a worker to start counting words. The output of this function
 // is the second argument.
-void start_worker(boost::asio::io_service & ioservice, worker & worker,
-                  size_t index, size_t worker_count, const string & directory)
+void start_worker(boost::asio::io_service & ioservice, worker & worker)
 {
     cout << "Starting worker " << worker.host << "..." << endl;
     wc::client client(ioservice, worker.host, worker.port);
 
-    client.send(std::to_string(index));
-    client.send(std::to_string(worker_count));
-    client.send(directory);
+    for (const auto & file : worker.files) {
+        client.send(file);
+    }
+    client.send(";]-done");
 
-    client.async_receive<1024 * 4>(
+    client.async_receive<1024 * 10>(
         [&worker](
             auto begin, auto end, bool eof
         ) {
@@ -111,10 +113,20 @@ void start_worker(boost::asio::io_service & ioservice, worker & worker,
 
 
 int word_count(const std::string & directory, vector<worker> & workers) {
+    // split up directory
+
+    int file_count = -1;
+    auto record_file = [&file_count, &workers](const string & file){
+        file_count ++;
+        const int worker_index = (file_count % workers.size());
+        workers[worker_index].files.push_back(file);
+    };
+    wc::read_directory(record_file, directory, cerr);
+
     boost::asio::io_service ioservice;
 
     for (size_t i = 0; i < workers.size(); ++ i) {
-        start_worker(ioservice, workers[i], i, workers.size(), directory);
+        start_worker(ioservice, workers[i]);
     }
 
     cout << "Waiting..." << endl;

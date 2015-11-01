@@ -94,7 +94,8 @@ Here are my results from using "read_directory" on my somewhat powerful desktop:
     8. my   3318784
     9. that 3060736
     10. in  3032064
-    Elapsed time: 258756ms
+    Elapsed time: 222858ms
+
 
 Here is is using five worker processes and a master on VM:
 
@@ -112,7 +113,7 @@ Here is is using five worker processes and a master on VM:
     8. my   3318784
     9. that 3060736
     10. in  3032064
-    Elapsed time: 230832ms
+    Elapsed time: 218722ms
 
 
 Finally, here is the result running on three Rackspace Cloud Servers:

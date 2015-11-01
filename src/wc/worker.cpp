@@ -8,43 +8,49 @@
 #include <sstream>
 #include <boost/lexical_cast.hpp>
 
-
-using namespace wc;
+using std::cerr;
+using std::cout;
+using std::endl;
 using std::string;
 using std::stringstream;
-
+using std::vector;
 
 int main(int argc, const char * * args) {
     if (argc < 2) {
         std::cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
-                  << " port" << std::endl;
+                  << " port" << endl;
         return 1;
     }
     int port = boost::lexical_cast<int>(args[1]);
-
-
-    word_counter counter;
-    auto processor = [&counter](auto begin, auto end, bool eof) {
-        return read_blob(begin, end, eof, counter);
-    };
-
     const size_t buffer_size = 10 * 1024;
 
     try
     {
-        server server(port);
         while(true)
         {
-            int worker_index = boost::lexical_cast<int>(server.read());
-            int worker_count = boost::lexical_cast<int>(server.read());
-            string directory = server.read();
+            wc::server server(port);
+
+            wc::word_counter counter;
+            auto processor = [&counter](auto begin, auto end, bool eof) {
+                return read_blob(begin, end, eof, counter);
+            };
+
+            vector<string> files;
+            cout << "Reading in directory list..." << endl;
+
+            string input = server.read();
+            while(input != ";]-done") {
+                files.push_back(input);
+                input = server.read();
+            }
 
             // Read all words in the given directory.
-            std::cout << "Reading directory " << directory << "..."
-                      << std::endl;
-            wc::read_directory<buffer_size>(processor, directory, std::cerr,
-                                            worker_index, worker_count);
-            std::cout << "Finished." << std::endl;
+            for(const string & file : files) {
+                cout << "Reading file \"" << file << "\"..." << endl;
+                wc::read_file<buffer_size>(processor, file);
+            }
+
+            cout << "Finished." << endl;
 
             // TODO: Using a streamstream is pretty dopey because the entirety
             //       of the message has to be buffered in memory, but it
@@ -61,12 +67,11 @@ int main(int argc, const char * * args) {
             // Change it into a giant string and send it.
             auto s = stream.str();
 
-            std::cout << "Responding... (size == " << s.length() << ")"
-                      << std::endl;
+            cout << "Responding... (size == " << s.length() << ")" << endl;
             server.write(s);
         }
     } catch(const std::exception & e) {
-        std::cerr << "An error occured: " << e.what() << std::endl;
+        cerr << "An error occured: " << e.what() << endl;
         return 1;
     }
 }
