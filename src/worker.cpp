@@ -3,9 +3,9 @@
 // files and their count.
 
 #include <wc/cmds.h>
+#include <wc/communication.h>
 #include <wc/count.h>
 #include <wc/filesystem.h>
-#include <wc/tcp.h>
 #include <wc/top.h>
 #include <iostream>
 #include <sstream>

@@ -4,9 +4,9 @@
 // top 10 words seen in all files.
 
 #include <wc/cmds.h>
+#include <wc/communication.h>
 #include <wc/count.h>
 #include <wc/filesystem.h>
-#include <wc/tcp.h>
 #include <wc/top.h>
 #include <iostream>
 #include <boost/lexical_cast.hpp>
@@ -20,41 +20,21 @@ using std::size_t;
 using std::string;
 using std::vector;
 
+
 // Contains all of the info / state for a worker.
 struct worker {
     string host;
     string port;
     vector<string> files;
-    bool error_occured;
-    bool finished;
-    wc::word_map results;
+    wc::worker_results_collector results_collector;
 
     worker(const string & host, const string & port)
     :   host(host),
         port(port),
-        error_occured(false),
-        finished(false),
-        results()
+        files(),
+        results_collector()
     {
     }
-
-    // The workers send out a series of words and their counts over and over.
-    // This function captures that data, recording it into a map.
-    template<typename Iterator>
-    void operator()(Iterator start, Iterator end) {
-        is_odd = !is_odd;
-        if (is_odd) {
-            last_word = string(start, end);
-        } else {
-            string count_str(start, end);
-            size_t count = lexical_cast<size_t>(count_str);
-            results[last_word] = count;
-        }
-    }
-
-private:
-    bool is_odd;
-    string last_word;
 };
 
 // Tells a worker to start counting words. The output of this function
@@ -69,20 +49,7 @@ void start_worker(boost::asio::io_service & ioservice, worker & worker)
     }
     client.send(";]-done");
 
-    client.async_receive<1024 * 10>(
-        [&worker](
-            auto begin, auto end, bool eof
-        ) {
-            return wc::read_blob(begin, end, eof, worker);
-        },
-        [&worker]() {
-            worker.finished = true;
-        },
-        [&worker](const string & msg) {
-            worker.error_occured = true;
-            cerr << msg << endl;
-        }
-    );
+    wc::async_collect_results(client, worker.results_collector);
 }
 
 int word_count(const string & directory, vector<worker> & workers) {
@@ -112,13 +79,13 @@ int word_count(const string & directory, vector<worker> & workers) {
 
     cout << "Finished..." << endl;
     for (const auto worker : workers) {
-        if (worker.error_occured) {
+        if (worker.results_collector.error_occured()) {
             cerr << "An error occured on " << worker.host << " "
                  << worker.port << ". Results are invalid. :("
                  << endl;
             return 2;
         }
-        if (!worker.finished) {
+        if (!worker.results_collector.is_finished()) {
             cerr << "Worker didn't finish: " << worker.host << " "
                  << worker.port << "."
                  << endl;
@@ -129,10 +96,10 @@ int word_count(const string & directory, vector<worker> & workers) {
     cout << "Performing final count..." << endl;
 
     // Commandeer the first element's results and use it for the running total.
-    wc::word_map totals = workers[0].results;
+    wc::word_map totals = workers[0].results_collector.get_results();
     // Add in the totals from all of the other workers.
     for (int i = 1; i < workers.size(); ++ i) {
-        auto rhs = workers[i].results;
+        auto rhs = workers[i].results_collector.get_results();
         for (auto itr = rhs.begin(); itr != rhs.end(); ++ itr) {
             totals[itr->first] += itr->second;
         }
