@@ -13,16 +13,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
-
-//#define GCC_IS_CRASHING
-
-#ifdef GCC_IS_CRASHING
-    #include <boost/lockfree/queue.hpp>
-#else
-    //TODO: I really *WANTED* to use the spsc_queue, but I can't because
-    //      GCC 5.2 keeps crashing when I simply include the file! >:-(
-    #include <boost/lockfree/spsc_queue.hpp>
-#endif
+#include <boost/lockfree/spsc_queue.hpp>
 #include <boost/lexical_cast.hpp>
 
 using std::cerr;
@@ -35,16 +26,6 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
-#ifdef GCC_IS_CRASHING
-    template<typename T>
-    using boost_queue = boost::lockfree::queue<T>;
-#else
-    template<typename T>
-    using boost_queue = boost::lockfree::spsc_queue<T>;
-#endif
-
-// http://www.boost.org/doc/libs/1_59_0/doc/html/boost/lockfree/spsc_queue.html
-// http://theboostcpplibraries.com/boost.lockfree
 
 constexpr size_t buffer_size = 10 * 1024;
 
@@ -92,7 +73,7 @@ public:
 private:
     bool send;
     char local_buffer[buffer_size];
-    boost_queue<char> shared_buffer;
+    boost::lockfree::spsc_queue<char> shared_buffer;
 };
 
 // Contains all of the info / state for a worker.
@@ -119,8 +100,10 @@ void sender_thread(worker & w) {
     boost::asio::io_service io;
     wc::client client(io, w.host, w.port);
     w.loader.consume_and_send_data([&client](auto buffer, auto count) {
+        client.send_byte('.');
         client.send(string(buffer, buffer + count));
     });
+    client.send_byte('!');
     wc::async_collect_results(client, w.results_collector);
     io.run();
 }
@@ -129,16 +112,29 @@ void sender_thread(worker & w) {
 void reader_thread(const string & root_directory,
                    vector<queue_loader *> & senders) {
     auto processor = [&senders](auto begin, auto end, bool eof) {
-        // find max write_available on all clients
-        auto max_itr = std::max_element(
-            senders.begin(), senders.end(),
-            [](const queue_loader * a, const queue_loader * b) {
-                return a->write_available() < b->write_available();
-            }
-        );
-        queue_loader * sender = *max_itr;
-        const size_t write_size = sender->write_available();
 
+        // Move forward until we find a word character.
+        while (!wc::is_word_character(*begin)) {
+            if (begin == end) {
+                return end;  // Eject if no word characters found.
+            }
+            begin ++;
+        }
+
+        // Spin until someone has space.
+        queue_loader * sender = nullptr;
+        while(nullptr == sender || sender->write_available() < 1) {
+            // find max write_available on all clients
+            auto max_itr = std::max_element(
+                senders.begin(), senders.end(),
+                [](const queue_loader * a, const queue_loader * b) {
+                    return a->write_available() < b->write_available();
+                }
+            );
+            sender = *max_itr;
+        }
+
+        const size_t write_size = sender->write_available();
         const size_t size_of_data = end - begin;
 
         // Discover how far we'll write...
@@ -155,7 +151,15 @@ void reader_thread(const string & root_directory,
             }
         }
 
-        // Finally send the data
+        // If write_until went all the way back to begin, then we need to
+        // just return and try again (otherwise we'll be returning the
+        // begin iterator, making it think we didn't have a big enough
+        // buffer).
+        if (write_until == begin) {
+            return end - (size_of_data - write_size);
+        }
+
+        // Finally send the data.
         // We *have* to send the full chunk out to avoid stopping on a word.
         // In theory this should be quick since write_available had the
         // space free.
@@ -165,7 +169,7 @@ void reader_thread(const string & root_directory,
         return begin;
     };
     auto file_handler = [&processor](const string full_path) {
-        cout << "Reading file \"" << full_path << "\"..." << endl;
+        cerr << "Reading file \"" << full_path << "\"..." << endl;
         wc::read_file<buffer_size>(processor, full_path);
     };
     wc::read_directory(file_handler, root_directory, cerr);

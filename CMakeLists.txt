@@ -62,6 +62,7 @@ add_wc_exe(read_directory read_directory.cpp)
 add_wc_exe(worker worker.cpp)
 add_wc_exe(master master.cpp)
 
+add_wc_exe(worker2 worker2.cpp)
 add_wc_exe(master2 master2.cpp)
 
 add_wc_test(count_tests)

@@ -216,6 +216,12 @@ public:
         return socket_read_line(socket);
     }
 
+    void send_byte(const char byte) {
+        using boost::asio::buffer;
+        using boost::asio::read;
+        write(socket, buffer(&byte, 1));
+    }
+
     void send(const std::string & message) {
         ensure_sync_mode();
         socket_write_line(socket, message);
@@ -274,6 +280,15 @@ public:
         return socket_read_line(socket);
     }
 
+    char receive_byte() {
+        using boost::asio::buffer;
+        using boost::asio::read;
+        ensure_started();
+        char byte;
+        read(socket, buffer(&byte, 1));
+        return byte;
+    }
+
 private:
     boost::asio::io_service ioservice;
     const boost::asio::ip::tcp::endpoint endpoint;
@@ -289,7 +304,6 @@ private:
         }
     }
 };
-
 
 }  // end namespace wc
 
