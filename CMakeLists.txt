@@ -57,9 +57,9 @@ function(add_wc_test name)
 endfunction()
 
 
-add_wc_exe(read_file wc/read_file.cpp)
-add_wc_exe(read_directory wc/read_directory.cpp)
-add_wc_exe(worker wc/worker.cpp)
-add_wc_exe(master wc/master.cpp)
+add_wc_exe(read_file read_file.cpp)
+add_wc_exe(read_directory read_directory.cpp)
+add_wc_exe(worker worker.cpp)
+add_wc_exe(master master.cpp)
 
 add_wc_test(count_tests)
