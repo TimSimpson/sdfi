@@ -52,8 +52,12 @@ public:
     // data from the distributor and then send it.
 	template<typename Function>
     void consume_and_send_data(Function on_send) {
-        size_t count = 0;
-        while(send || count != 0) {
+        size_t count = 1;
+        bool check_buffer_after_finish = true;
+        while(send || check_buffer_after_finish || count > 0) {
+            if (!send) {   // Check one more time after finish is called.
+                check_buffer_after_finish = false;
+            }
             count = shared_buffer.pop(local_buffer, sizeof(local_buffer));
             on_send(local_buffer, count);
         }
@@ -67,8 +71,22 @@ public:
 
     // Called by the distributor.
 	template<typename Iterator>
-	Iterator process_text(Iterator begin, Iterator end) {
-        return shared_buffer.push(begin, end);
+	void process_text(Iterator begin, Iterator end) {
+        if (end <= begin) {
+            return;
+        }
+        Iterator itr = begin;
+        char last_char = *(end -1);
+        while (itr != end) {
+            itr = shared_buffer.push(begin, end);
+        }
+        // The worker doesn't receive the data all at once- so we could send
+        // "a cat", then "was fat" and have it interpretted as "a catwas fat".
+        // We send some trailing non word characters to prevent this.
+        if (wc::is_word_character(last_char)) {
+            const char * junk = "#";
+            shared_buffer.push(junk, junk + 1);
+        }
     }
 private:
     bool send;
@@ -109,81 +127,28 @@ void sender_thread(worker & w) {
 }
 
 
+using queue_loader_vec = vector<queue_loader *>;
+
 void reader_thread(const string & root_directory,
-                   vector<queue_loader *> & senders) {
-    auto processor = [&senders](auto begin, auto end, bool eof) {
-
-        // Move forward until we find a word character.
-        while (!wc::is_word_character(*begin)) {
-            if (begin == end) {
-                return end;  // Eject if no word characters found.
-            }
-            begin ++;
-        }
-
-        // Spin until someone has space.
-        queue_loader * sender = nullptr;
-        while(nullptr == sender || sender->write_available() < 1) {
-            // find max write_available on all clients
-            auto max_itr = std::max_element(
-                senders.begin(), senders.end(),
-                [](const queue_loader * a, const queue_loader * b) {
-                    return a->write_available() < b->write_available();
-                }
-            );
-            sender = *max_itr;
-        }
-
-        const size_t write_size = sender->write_available();
-        const size_t size_of_data = end - begin;
-
-        // Discover how far we'll write...
-        auto write_until = end;
-        if (write_size < size_of_data) {
-            write_until -= (size_of_data - write_size);
-        }
-
-        // Now see if we might be breaking up a word-
-        if (!eof || write_until != end) {
-            while(write_until != begin
-                    && wc::is_word_character(*write_until)) {
-                write_until --;
-            }
-        }
-
-        // If write_until went all the way back to begin, then we need to
-        // just return and try again (otherwise we'll be returning the
-        // begin iterator, making it think we didn't have a big enough
-        // buffer).
-        if (write_until == begin) {
-            return end - (size_of_data - write_size);
-        }
-
-        // Finally send the data.
-        // We *have* to send the full chunk out to avoid stopping on a word.
-        // In theory this should be quick since write_available had the
-        // space free.
-        while(begin != write_until) {
-            begin = sender->process_text(begin, write_until);
-        }
-        return begin;
-    };
-    auto file_handler = [&processor](const string full_path) {
+                   queue_loader_vec & senders) {
+    wc::queue_distributor<queue_loader_vec, queue_loader>
+        distributor(senders);
+    auto file_handler = [&distributor](const string full_path) {
         cerr << "Reading file \"" << full_path << "\"..." << endl;
-        wc::read_file<buffer_size>(processor, full_path);
+        wc::read_file<buffer_size>(distributor, full_path);
     };
     wc::read_directory(file_handler, root_directory, cerr);
 }
 
 
 int word_count(const string & directory, vector<unique_ptr<worker>> & workers) {
-    vector<queue_loader *> loaders;
+    queue_loader_vec queues;
     for(auto & w_ptr : workers) {
-        loaders.push_back(&w_ptr->loader);
+        queues.push_back(&(w_ptr->loader));
     }
 
-    std::thread produce([directory, &loaders](){
-        reader_thread(directory, loaders);
+    std::thread produce([directory, &queues](){
+        reader_thread(directory, queues);
     });
     vector<std::thread> consumers;
     for (auto & w_ptr : workers) {
@@ -197,15 +162,14 @@ int word_count(const string & directory, vector<unique_ptr<worker>> & workers) {
 
     // Wait for distributor to finish.
     produce.join();
-    // Notify the loaders that no more data will be arriving.
-    for(queue_loader * l : loaders) {
+    // Notify the queues that no more data will be arriving.
+    for(queue_loader * l : queues) {
         l->finish();
     }
     // Wait for threads to end.
     for (std::thread & t : consumers) {
         t.join();
     }
-
 
     cout << "Finished..." << endl;
     for (const auto & w_ptr : workers) {
@@ -248,6 +212,7 @@ int word_count(const string & directory, vector<unique_ptr<worker>> & workers) {
         cout << i + 1 << ". " << word_info.first
              << "\t" << word_info.second << "\n";
     }
+
     return 0;
 }
 

@@ -52,6 +52,27 @@ Iterator read_blob(Iterator begin, Iterator end, bool eof, Func & receive_word)
     return end;
 }
 
+
+template<typename InputStream>
+struct stream_ref_wrapper {
+    InputStream & stream;
+
+    stream_ref_wrapper(InputStream & stream)
+    :   stream(stream)
+    {}
+
+    bool has_more() const {
+        return stream && stream.good() && !stream.eof();
+    }
+
+    template<typename Iterator, typename SizeType>
+    SizeType read(Iterator output_buffer, SizeType count) {
+        stream.read(output_buffer, count);
+        return stream.gcount();
+    }
+};
+
+
 // Repeatedly reads from an input stream into a buffer it creates, calling a
 // processor function to look at the contents of the buffer during each
 // iteration.
@@ -60,16 +81,18 @@ Iterator read_blob(Iterator begin, Iterator end, bool eof, Func & receive_word)
 // is expected to pass back an iterator to one element past the last position
 // in the buffer it was able to process.
 // See the tests for more details.
-template<int buffer_size, typename InputStream, typename Func>
-void read_using_buffer(InputStream & input_stream, Func & process_text) {
+template<int buffer_size, typename Input, typename Func>
+auto read_using_buffer(Input & input, Func & process_text)
+    -> decltype(input.has_more(), void())
+{
     char buffer[buffer_size];
     auto start_itr = buffer;
 
-    while(input_stream && input_stream.good() && !input_stream.eof()) {
+    while(input.has_more()) {
         const auto max_length = buffer_size;
 
-        input_stream.read(start_itr, max_length - (start_itr - buffer));
-        const auto length = input_stream.gcount();
+        const auto length = input.read(
+            start_itr, max_length - (start_itr - buffer));
 
         auto end_itr = start_itr + length;
 
@@ -77,7 +100,7 @@ void read_using_buffer(InputStream & input_stream, Func & process_text) {
         // a chance to pick up any words it may have missed the last round,
         // which get copied back to the start of the buffer.
         auto last_unprocessed_pos = process_text(
-            buffer, end_itr, input_stream.eof());
+            buffer, end_itr, !input.has_more());
         if (last_unprocessed_pos == end_itr) {
             start_itr = buffer;
         } else {
@@ -93,6 +116,18 @@ void read_using_buffer(InputStream & input_stream, Func & process_text) {
             start_itr = buffer + (end_itr - last_unprocessed_pos);
         }
     }
+}
+
+
+// This overload works for typical input streams. It uses the decltype to
+// determine if the overload is appropriate by seeing if the argument has
+// a "good" method.
+template<int buffer_size, typename InputStream, typename Func>
+auto read_using_buffer(InputStream & input_stream, Func & process_text)
+    -> decltype(input_stream.good(), void())
+{
+    stream_ref_wrapper<decltype(input_stream)> wrapper(input_stream);
+    read_using_buffer<buffer_size>(wrapper, process_text);
 }
 
 // Collects words in a word_map.

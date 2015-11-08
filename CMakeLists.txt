@@ -50,6 +50,9 @@ endfunction()
 
 function(add_wc_test name)
     add_executable(${name} tests/${name}.cpp)
+    target_link_libraries(${name}
+        ${Boost_LIBRARIES}
+    )
     install(TARGETS ${name} RUNTIME DESTINATION bin)
     add_test(test_${name} ${name})
     add_custom_target(all_tests COMMAND ${CMAKE_CTEST_COMMAND}

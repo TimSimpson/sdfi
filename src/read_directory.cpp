@@ -17,6 +17,9 @@ using std::endl;
 using std::exception;
 using std::string;
 
+constexpr size_t buffer_size = 10 * 1024;
+
+
 int main(int argc, const char * * args) {
     if (argc < 2) {
         cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
@@ -29,9 +32,7 @@ int main(int argc, const char * * args) {
     wc::word_counter counter;
     auto processor = [&counter](auto begin, auto end, bool eof) {
         return read_blob(begin, end, eof, counter);
-    };
-
-    const size_t buffer_size = 10 * 1024;
+    };    
 
     auto file_handler = [&processor](const string full_path) {
         cout << "Reading file \"" << full_path << "\"..." << endl;
