@@ -4,6 +4,7 @@
 #include <wc/count.h>
 #include <wc/tcp.h>
 #include <boost/lexical_cast.hpp>
+#include <boost/lockfree/spsc_queue.hpp>
 
 
 namespace wc {
@@ -87,6 +88,8 @@ void async_collect_results(client & client,
 // this takes data and then pipes it one of a list of queues which are
 // ready to receive data. Because each queue needs a complete words though
 // some extra work has to happen to avoid cutting words up in the middle.
+// Queues is intended to be a vector like collection of pointers to Queue
+// instances.
 template<typename Queues, typename Queue>
 class queue_distributor {
 public:
@@ -195,6 +198,191 @@ public:
     };
 private:
     Queues & queues;
+};
+
+
+// This takes care of loading up the workers with data by using a queue
+// which is written to by the distributor thread and read from by one of the
+// sender threads.
+template<int buffer_size>
+class queue_loader {
+public:
+    queue_loader()
+    :   shared_buffer(buffer_size),
+        send(true)
+    {}
+
+    queue_loader(const queue_loader & rhs) = delete;
+    queue_loader & operator=(const queue_loader & rhs) = delete;
+
+    // Called by the distributor to note that the job is finished.
+    void finish() {
+        send = false;
+    }
+
+    // Called by a different thread (only one other one btw) to wait for
+    // data from the distributor and then send it.
+    template<typename Function>
+    void consume_and_send_data(Function on_send) {
+        size_t count = 1;
+        // After the distributor thread sets "send" to false, we know nothing
+        // else will be added to the buffer- but we still need to flush the
+        // buffer out before we quit.
+        bool check_buffer_after_finish = true;
+        while(send || check_buffer_after_finish || count > 0) {
+            if (!send) {   // Check one more time after finish is called.
+                check_buffer_after_finish = false;
+            }
+            count = shared_buffer.pop(local_buffer, sizeof(local_buffer));
+            on_send(local_buffer, count);
+        }
+    }
+
+    // Called by the distributor to determine how much space is left for
+    // writing.
+    auto write_available() const {
+        return shared_buffer.write_available();
+    }
+
+    // Called by the distributor, actually pushes text into this queue.
+    // Note that this will block until all the data is pushed. To avoid
+    // blocking, call write_available first.
+    template<typename Iterator>
+    void process_text(Iterator begin, Iterator end) {
+        if (end <= begin) {
+            return;
+        }
+        Iterator itr = begin;
+        char last_char = *(end -1);
+        while (itr != end) {
+            itr = shared_buffer.push(begin, end);
+        }
+        // The worker doesn't receive the data all at once- so we could send
+        // "a cat", then "was fat" and have it interpretted as "a catwas fat".
+        // We send some trailing non word characters to prevent this.
+        if (wc::is_word_character(last_char)) {
+            const char * junk = "#";
+            shared_buffer.push(junk, junk + 1);
+        }
+    }
+private:
+    bool send;
+    char local_buffer[buffer_size];
+    boost::lockfree::spsc_queue<char> shared_buffer;
+};
+
+
+// Used by a worker, this allows a server to be used from the read_using_buffer
+// function. The server expects a single byte == '.' to mean "read one more
+// line" while a byte of "!" means EOF.
+// Note that this takes a reference to a server.
+struct server_reader {
+    char last_byte;
+    std::string last_string;
+    wc::server * server;
+
+    server_reader(wc::server * server)
+    :   last_byte(),
+        last_string(),
+        server(server)
+    {
+        if (nullptr == server) {
+            throw std::logic_error("Null not allowed for server_reader.");
+        }
+        last_byte = server->receive_byte();
+    }
+
+    bool has_more() const {
+        return last_string.size() != 0 || last_byte == '.';
+    }
+
+    template<typename Iterator, typename SizeType>
+    SizeType read(Iterator output_buffer, SizeType count) {
+        if (last_string.size() == 0) {
+            last_string = server->receive();
+            last_byte = server->receive_byte();
+        }
+        if (count >= last_string.size()) {
+            std::copy(last_string.begin(), last_string.end(), output_buffer);
+            SizeType result = last_string.size();
+            last_string.erase();
+            return result;
+        } else {
+            std::copy(last_string.begin(), last_string.begin() + count,
+                      output_buffer);
+            last_string.erase(0, count);
+            return count;
+        }
+    }
+};
+
+
+class word_char_divvy {
+public:
+    word_char_divvy(int worker_count) {
+        if (worker_count > 36) {
+            throw std::logic_error("Can't handle that many workers.");
+        }
+        int current_index = 0;
+        for (int i = 0; i < 36; ++ i) {
+            word_chars[i] = current_index;
+            ++ current_index;
+            if (current_index >= worker_count) {
+                current_index = 0;
+            }
+        }
+    }
+
+    static inline int index(char c) {
+        if (c >= 'A' && c <= 'Z') {
+            return c - 'A';
+        } else if (c >= 'a' && c <= 'z') {
+            return c - 'a';
+        } else if (c >= '0' && c <= '9') {
+            return c - '0';
+        }
+        throw std::logic_error("Bad argument.");
+    }
+
+    int find_worker(char c) const {
+        return word_chars[index(c)];
+    }
+
+private:
+    int worker_count;
+    int word_chars[36];
+};
+
+
+// This version of the distributor looks for words and sends them to the
+// various queues based on the first letter.
+// This takes longer, because it has to scan every letter and possibly
+// may wait on queues that end up being over-burdened based on the div'ier.
+template<typename CharToWorkerIndexer, typename Queues, typename Queue>
+class letter_based_distributor {
+public:
+    letter_based_distributor(CharToWorkerIndexer indexer, Queues & queues)
+    :   queues(queues),
+        indexer(indexer)
+    {
+    }
+
+    template<typename Iterator>
+    Iterator operator()(const Iterator begin, const Iterator end,
+                        const bool eof)
+    {
+        auto receive_word = [this](auto begin, auto end) {
+            if (end <= begin) {
+                return;
+            }
+            int index = indexer.find_worker(*begin);
+            queues[index]->process_text(begin, end);
+        };
+        return wc::read_blob(begin, end, eof, receive_word);
+    };
+private:
+    Queues & queues;
+    CharToWorkerIndexer indexer;
 };
 
 

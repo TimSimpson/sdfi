@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <iostream>  // MARIO
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -104,7 +105,10 @@ auto read_using_buffer(Input & input, Func & process_text)
         if (last_unprocessed_pos == end_itr) {
             start_itr = buffer;
         } else {
-            if (last_unprocessed_pos == buffer) {
+            if (last_unprocessed_pos == buffer
+                && sizeof(buffer) == (end_itr - buffer)) {
+                std::cerr << "MARIO gonna have crash!\n"
+                    << std::string(buffer, end_itr) << "!" << std::endl;
                 throw std::length_error("Buffer is too small to accomodate "
                     "continous data of this size.");
             }

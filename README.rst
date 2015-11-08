@@ -76,6 +76,44 @@ the words in the directory /books which should be present and identical on
 each machine a worker process runs on.
 
 
+Multiple Processes II
+~~~~~~~~~~~~~~~~~~~~~
+
+If the worker processes don't have access to the directories they need to read
+then master2 / worker2 can be used instead. These work much like the earlier
+programs except that master2 will read all the data and send it to worker2 to
+read.
+
+The second version chunks data into arbitrary points, forcing all worker2 to
+send back a list of all the word counts which master2 then sums up before
+finding the top words.
+
+
+Multiple Processes III
+~~~~~~~~~~~~~~~~~~~~~~
+
+This approach is just like II above except that the master3 only sends words
+beginning with a certain prefix to various worker3 processes.
+
+For example, if there are three worker3 processes, master3 will send the first
+all words starting with "a-m", worker2 all words "n-z", and worker3 all words
+"0-9".
+
+It does so by indexing the valid word characters, then divying up the
+index by each worker:
+
+    Index:      0         1         2         3
+                012345678901234567890123456789012345
+    Characters: abcdefghijklmnopqrstuvwxyz0123456789
+
+    worker instance 1 =  0-11 (a-l)  (12 total)
+    worker instance 2 = 12-23 (m-x)  (12 total)
+    worker instance 3 = 24-35 (y-9)  (12 total)
+
+Because no two worker2 instances see the same word, they are free to send back
+only the top ten words, of master3 takes the maximum of.
+
+
 Performance
 ~~~~~~~~~~~
 

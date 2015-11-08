@@ -52,18 +52,19 @@ int main(int argc, const char * * args) {
 
             cout << "Finished." << endl;
 
-            // TODO: Using a streamstream is pretty dopey because the entirety
-            //       of the message has to be buffered in memory, but it
-            //       doesn't seem to affect performance. However in theory
-            //       this could cause problems if you wanted to look through
-            //       arbitrary files with a huge number of potential "words."
-
-            // Create the giant message in memory.
-            stringstream stream;
-            for(const auto & word_info : counter.words()) {
-                stream << word_info.first << "\t" << word_info.second << "\n";
+            // Find the top 10 words.
+            wc::top_word_collection<10> top_words;
+            const wc::word_map & totals = counter.words();
+            for(auto itr = totals.begin(); itr != totals.end(); ++ itr) {
+                top_words.add(itr->first, itr->second);
             }
 
+            // Stream back the top words.
+            stringstream stream;
+            for(int i = 0; i < top_words.total_words(); ++i) {
+                const auto word_info = top_words.get_words()[i];
+                stream << word_info.first << "\t" << word_info.second << "\n";
+            }
             // Change it into a giant string and send it.
             auto s = stream.str();
 
