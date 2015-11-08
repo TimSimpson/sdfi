@@ -68,8 +68,11 @@ void sender_thread(worker & w) {
 
 void reader_thread(const string & root_directory,
                    queue_loader_vec & senders) {
-    wc::queue_distributor<queue_loader_vec, queue_loader>
-        distributor(senders);
+    wc::word_char_divvy divy(senders.size());
+    wc::letter_based_distributor<
+        wc::word_char_divvy, queue_loader_vec, queue_loader>
+        distributor(divy, senders);
+
     auto file_handler = [&distributor](const string full_path) {
         cerr << "Reading file \"" << full_path << "\"..." << endl;
         wc::read_file<buffer_size>(distributor, full_path);

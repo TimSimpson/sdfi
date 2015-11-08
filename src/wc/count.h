@@ -104,7 +104,8 @@ auto read_using_buffer(Input & input, Func & process_text)
         if (last_unprocessed_pos == end_itr) {
             start_itr = buffer;
         } else {
-            if (last_unprocessed_pos == buffer) {
+            if (last_unprocessed_pos == buffer
+                && sizeof(buffer) == (end_itr - buffer)) {
                 throw std::length_error("Buffer is too small to accomodate "
                     "continous data of this size.");
             }
