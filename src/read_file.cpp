@@ -2,6 +2,7 @@
 // Reads all text and prints out all words and their counts followed by the
 // top ten most frequently seen words.
 
+#include <wc/cmds.h>
 #include <wc/count.h>
 #include <wc/top.h>
 #include <algorithm>
@@ -30,16 +31,14 @@ int main(int argc, const char * * args) {
         return wc::read_blob(begin, end, eof, counter);
     };
 
-    const size_t buffer_size = 10 * 1024;
-
     try {
         if (file_name) {
             ifstream actual_file(file_name.get(),ifstream::binary);
             actual_file.exceptions(std::ifstream::badbit);
-            wc::read_using_buffer<buffer_size>(actual_file, processor);
+            wc::read_using_buffer<wc::buffer_size>(actual_file, processor);
         } else {
             cin.exceptions(ifstream::badbit);
-            wc::read_using_buffer<buffer_size>(cin, processor);
+            wc::read_using_buffer<wc::buffer_size>(cin, processor);
         }
     } catch(const length_error &) {
         cerr << "A word in this file was too large to be processed." << endl;

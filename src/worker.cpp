@@ -26,7 +26,6 @@ int main(int argc, const char * * args) {
         return 1;
     }
     int port = lexical_cast<int>(args[1]);
-    const size_t buffer_size = 10 * 1024;
 
     try
     {
@@ -52,7 +51,7 @@ int main(int argc, const char * * args) {
             // Read all words in the given directory.
             for(const string & file : files) {
                 cout << "Reading file \"" << file << "\"..." << endl;
-                wc::read_file<buffer_size>(processor, file);
+                wc::read_file<wc::buffer_size>(processor, file);
             }
 
             cout << "Finished." << endl;

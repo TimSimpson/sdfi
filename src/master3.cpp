@@ -27,9 +27,7 @@ using std::unique_ptr;
 using std::vector;
 
 
-constexpr size_t buffer_size = 10 * 1024;
-
-using queue_loader = wc::queue_loader<buffer_size>;
+using queue_loader = wc::queue_loader<wc::buffer_size>;
 using queue_loader_vec = vector<queue_loader *>;
 
 
@@ -75,7 +73,7 @@ void reader_thread(const string & root_directory,
 
     auto file_handler = [&distributor](const string full_path) {
         cerr << "Reading file \"" << full_path << "\"..." << endl;
-        wc::read_file<buffer_size>(distributor, full_path);
+        wc::read_file<wc::buffer_size>(distributor, full_path);
     };
     wc::read_directory(file_handler, root_directory, cerr);
 }

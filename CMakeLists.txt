@@ -30,7 +30,7 @@ include_directories(
 
 
 function(add_wc_exe name src)
-    add_executable(${name} src/${src})
+    add_executable(${name} ${src})
     target_link_libraries(${name}
         ${Boost_FILESYSTEM_LIBRARY}
         ${Boost_REGEX_LIBRARY}
@@ -60,15 +60,17 @@ function(add_wc_test name)
 endfunction()
 
 
-add_wc_exe(read_file read_file.cpp)
-add_wc_exe(read_directory read_directory.cpp)
-add_wc_exe(worker worker.cpp)
-add_wc_exe(master master.cpp)
+add_wc_exe(read_file src/read_file.cpp)
+add_wc_exe(read_directory src/read_directory.cpp)
+add_wc_exe(worker src/worker.cpp)
+add_wc_exe(master src/master.cpp)
 
-add_wc_exe(worker2 worker2.cpp)
-add_wc_exe(master2 master2.cpp)
+add_wc_exe(worker2 src/worker2.cpp)
+add_wc_exe(master2 src/master2.cpp)
 
-add_wc_exe(worker3 worker3.cpp)
-add_wc_exe(master3 master3.cpp)
+add_wc_exe(worker3 src/worker3.cpp)
+add_wc_exe(master3 src/master3.cpp)
 
+
+add_wc_exe(worker_master_comm tests/worker_master_comm.cpp)
 add_wc_test(count_tests)

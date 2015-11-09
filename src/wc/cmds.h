@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 using std::chrono::duration_cast;
 using std::chrono::high_resolution_clock;
@@ -12,6 +13,8 @@ using std::chrono::milliseconds;
 
 
 namespace wc {
+
+constexpr std::size_t buffer_size = 10 * 1024;
 
 // This class prints out the elapsed time.
 class stop_watch {
@@ -35,6 +38,11 @@ private:
     decltype(hrclock::now()) start_time;
 };
 
+
+void nap() {
+    using namespace std::literals;
+    std::this_thread::sleep_for(2ms);
+}
 
 }  // end namespace wc
 
