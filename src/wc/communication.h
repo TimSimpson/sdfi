@@ -3,6 +3,8 @@
 
 #include <wc/count.h>
 #include <wc/tcp.h>
+#include <condition_variable>
+#include <thread>
 #include <boost/lexical_cast.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
 
@@ -208,7 +210,10 @@ template<int buffer_size>
 class queue_loader {
 public:
     queue_loader()
-    :   shared_buffer(buffer_size),
+    :   consumer(),
+        producer(),
+        mutex(),
+        count(0),
         send(true)
     {}
 
@@ -217,31 +222,38 @@ public:
 
     // Called by the distributor to note that the job is finished.
     void finish() {
-        send = false;
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            producer.wait(lock, [this]() { return count == 0; });
+            send = false;
+            count.store(1);
+        }
+        consumer.notify_one();
     }
 
     // Called by a different thread (only one other one btw) to wait for
     // data from the distributor and then send it.
     template<typename Function>
     void consume_and_send_data(Function on_send) {
-        size_t count = 1;
-        // After the distributor thread sets "send" to false, we know nothing
-        // else will be added to the buffer- but we still need to flush the
-        // buffer out before we quit.
-        bool check_buffer_after_finish = true;
-        while(send || check_buffer_after_finish || count > 0) {
-            if (!send) {   // Check one more time after finish is called.
-                check_buffer_after_finish = false;
+        while(send) {
+            producer.notify_one();
+            {
+                std::unique_lock<std::mutex> lock(mutex);
+                consumer.wait(lock, [this]() {return count > 0; });
+                if (!send) {
+                    return;
+                }
+                on_send(local_buffer, count.load());
+                count.store(0);
             }
-            count = shared_buffer.pop(local_buffer, sizeof(local_buffer));
-            on_send(local_buffer, count);
         }
+        producer.notify_one();
     }
 
     // Called by the distributor to determine how much space is left for
     // writing.
     auto write_available() const {
-        return shared_buffer.write_available();
+        return (sizeof(local_buffer) - 1) - count;
     }
 
     // Called by the distributor, actually pushes text into this queue.
@@ -249,26 +261,28 @@ public:
     // blocking, call write_available first.
     template<typename Iterator>
     void process_text(Iterator begin, Iterator end) {
-        if (end <= begin) {
-            return;
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            producer.wait(lock, [this]() { return count == 0; });
+            std::copy(begin, end, local_buffer);
+            // Add some extra garbage so the words are interpretted correctly
+            // (this is why we subtract one in write_available).
+            int new_count = end - begin;
+            if (wc::is_word_character(*(end - 1))) {
+                local_buffer[new_count] = '#';
+                ++ new_count;
+            }
+            count.store(new_count);
         }
-        Iterator itr = begin;
-        char last_char = *(end -1);
-        while (itr != end) {
-            itr = shared_buffer.push(begin, end);
-        }
-        // The worker doesn't receive the data all at once- so we could send
-        // "a cat", then "was fat" and have it interpretted as "a catwas fat".
-        // We send some trailing non word characters to prevent this.
-        if (wc::is_word_character(last_char)) {
-            const char * junk = "#";
-            shared_buffer.push(junk, junk + 1);
-        }
+        consumer.notify_one();
     }
 private:
-    bool send;
+    std::condition_variable consumer;
+    std::condition_variable producer;
+    std::mutex mutex;
+    std::atomic_bool send;
+    std::atomic<int> count;
     char local_buffer[buffer_size];
-    boost::lockfree::spsc_queue<char> shared_buffer;
 };
 
 

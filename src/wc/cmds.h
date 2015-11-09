@@ -6,6 +6,8 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <wc/count.h>
+#include <wc/top.h>
 
 using std::chrono::duration_cast;
 using std::chrono::high_resolution_clock;
@@ -42,6 +44,42 @@ private:
 void nap() {
     using namespace std::literals;
     std::this_thread::sleep_for(2ms);
+}
+
+
+void print_word_map(const wc::word_map & map) {
+    for(auto itr = map.begin(); itr != map.end(); ++ itr) {
+        std::cout << itr->first << "\t" << itr->second << std::endl;
+    }
+}
+
+void print_top_words(const wc::word_map & map) {
+    wc::top_word_collection<10> top_words;
+    for(auto itr = map.begin(); itr != map.end(); ++ itr) {
+        top_words.add(itr->first, itr->second);
+    }
+    std::cout << std::endl
+              << "Top words: " << std::endl
+              << std::endl;
+    for(const auto & word_info : top_words.get_words()) {
+        std::cout << word_info.first << "\t" << word_info.second << std::endl;
+    }
+}
+
+
+// Adds every word map in a collection except for the zeroth element to the
+// zeroeth element and returns a reference to it.
+wc::word_map sum_word_maps(auto collection, auto get_word_map) {
+    // Commandeer the first element's results and use it for the running total.
+    wc::word_map totals = get_word_map(collection[0]);
+    // Add in the totals from all of the other workers.
+    for (int i = 1; i < collection.size(); ++ i) {
+        const auto & rhs = get_word_map(collection[i]);
+        for (auto itr = rhs.begin(); itr != rhs.end(); ++ itr) {
+            totals[itr->first] += itr->second;
+        }
+    }
+    return totals;
 }
 
 }  // end namespace wc

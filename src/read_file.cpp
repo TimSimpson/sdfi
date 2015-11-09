@@ -45,18 +45,6 @@ int main(int argc, const char * * args) {
         return 2;
     }
 
-    wc::top_word_collection<10> top_words;
-
-    auto map = counter.words();
-    for(auto itr = map.begin(); itr != map.end(); ++ itr) {
-        cout << itr->first << "\t" << itr->second << endl;
-        top_words.add(itr->first, itr->second);
-    }
-
-    cout << endl
-         << "Top words: " << endl
-         << endl;
-    for(const auto & word_info : top_words.get_words()) {
-        cout << word_info.first << "\t" << word_info.second << "\n";
-    }
+    wc::print_word_map(counter.words());
+    wc::print_top_words(counter.words());
 }

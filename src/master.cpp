@@ -95,15 +95,12 @@ int word_count(const string & directory, vector<worker> & workers) {
 
     cout << "Performing final count..." << endl;
 
-    // Commandeer the first element's results and use it for the running total.
-    wc::word_map totals = workers[0].results_collector.get_results();
-    // Add in the totals from all of the other workers.
-    for (int i = 1; i < workers.size(); ++ i) {
-        auto rhs = workers[i].results_collector.get_results();
-        for (auto itr = rhs.begin(); itr != rhs.end(); ++ itr) {
-            totals[itr->first] += itr->second;
+    wc::word_map totals = wc::sum_word_maps(
+        workers,
+        [](worker & w) {
+            return w.results_collector.get_results();
         }
-    }
+    );
 
     // Now insert into word count and print.
     wc::top_word_collection<10> top_words;
