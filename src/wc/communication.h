@@ -147,19 +147,26 @@ public:
         // If the desired size is less than end - begin, move itr to the left.
         if (desired_max_size < size_of_data) {
             itr -= (size_of_data - desired_max_size);
-        } else if (eof) {
-            // If we have the desired write space and this is EOF, we can
-            // just return end.
-            return end;
         }
 
-        // itr, if it points to a word, isn't valid because it would
-        // be breaking up a word. So we need to move it back.
-        while(itr != begin && wc::is_word_character(*(itr - 1))) {
+        // itr, if it points to a word (or the end and we aren't at eof),
+        // it isn't valid because it would be breaking up a word. So we need
+        // to move it back.
+        if (itr == end) {
+            if (eof) {   // We can assume a break in the word here.
+                return itr;
+            }
+        } else if (!wc::is_word_character(*itr)) {
+            return itr;
+        }
+
+
+        while (itr != begin) {
+            if (!wc::is_word_character(*(itr -1))) {
+                break;
+            }
             -- itr;
         }
-
-        // Return itr.
         return itr;
     }
 

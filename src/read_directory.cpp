@@ -44,19 +44,7 @@ int main(int argc, const char * * args) {
         return 2;
     }
 
-    wc::top_word_collection<10> top_words;
+    wc::print_top_words(counter.words());
 
-    for(const auto & word_info : counter.words()) {
-        top_words.add(word_info.first, word_info.second);
-    }
-
-    cout << endl
-         << "Top words: " << endl
-         << endl;
-    for(int i = 0; i < top_words.total_words(); ++i) {
-        const auto word_info = top_words.get_words()[i];
-        cout << i + 1 << ". " << word_info.first
-             << "\t" << word_info.second << endl;
-    }
     watch.print_time();
 }

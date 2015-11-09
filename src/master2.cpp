@@ -10,6 +10,7 @@
 #include <wc/filesystem.h>
 #include <wc/tcp.h>
 #include <wc/top.h>
+#include <wc/master.h>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -31,65 +32,23 @@ using queue_loader = wc::queue_loader<wc::buffer_size>;
 using queue_loader_vec = vector<queue_loader *>;
 
 
-// Contains all of the info / state for a worker.
-struct worker {
-    string host;
-    string port;
-    queue_loader loader;
-    wc::worker_results_collector results_collector;
-
-    worker(const string & host, const string & port)
-    :   host(host),
-        port(port),
-        loader(),
-        results_collector()
-    {
-    }
-
-    worker(const worker & rhs) = delete;
-    worker & operator=(const worker & rhs) = delete;
-};
-
-
-void sender_thread(worker & w) {
-    boost::asio::io_service io;
-    wc::client client(io, w.host, w.port);
-    w.loader.consume_and_send_data([&client](auto buffer, auto count) {
-        client.send_byte('.');
-        client.send(string(buffer, buffer + count));
-    });
-    client.send_byte('!');
-    wc::async_collect_results(client, w.results_collector);
-    io.run();
-}
-
-
-void reader_thread(const string & root_directory,
-                   queue_loader_vec & senders) {
-    wc::queue_distributor<queue_loader_vec, queue_loader>
-        distributor(senders);
-    auto file_handler = [&distributor](const string full_path) {
-        cerr << "Reading file \"" << full_path << "\"..." << endl;
-        wc::read_file<wc::buffer_size>(distributor, full_path);
-    };
-    wc::read_directory(file_handler, root_directory, cerr);
-}
-
-
-int word_count(const string & directory, vector<unique_ptr<worker>> & workers) {
+int word_count(const string & directory,
+               vector<unique_ptr<wc::worker>> & workers) {
     queue_loader_vec queues;
     for(auto & w_ptr : workers) {
         queues.push_back(&(w_ptr->loader));
     }
 
     std::thread produce([directory, &queues](){
-        reader_thread(directory, queues);
+        wc::queue_distributor<queue_loader_vec, queue_loader> dist(queues);
+        wc::reader_thread(dist, directory);
     });
     vector<std::thread> consumers;
+    consumers.reserve(workers.size());
     for (auto & w_ptr : workers) {
-        worker & w = *w_ptr;
+        wc::worker & w = *w_ptr;
         consumers.emplace_back([&w](){
-            sender_thread(w);
+            wc::sender_thread(w);
         });
     }
 
@@ -134,19 +93,7 @@ int word_count(const string & directory, vector<unique_ptr<worker>> & workers) {
         }
     }
 
-    // Now insert into word count and print.
-    wc::top_word_collection<10> top_words;
-    for(auto itr = totals.begin(); itr != totals.end(); ++ itr) {
-        top_words.add(itr->first, itr->second);
-    }
-    cout << endl;
-    cout << "Top words: " << endl;
-    cout << endl;
-    for(int i = 0; i < top_words.total_words(); ++i) {
-        const auto word_info = top_words.get_words()[i];
-        cout << i + 1 << ". " << word_info.first
-             << "\t" << word_info.second << "\n";
-    }
+    wc::print_top_words(totals);
 
     return 0;
 }
@@ -160,9 +107,9 @@ int main(int argc, const char * * args) {
     wc::stop_watch watch;
 
     string directory(args[1]);
-    vector<unique_ptr<worker>> workers;
+    vector<unique_ptr<wc::worker>> workers;
     for (int i = 2; i + 1 < argc; i+= 2) {
-        workers.push_back(std::make_unique<worker>(args[i], args[i + 1]));
+        workers.push_back(std::make_unique<wc::worker>(args[i], args[i + 1]));
     }
 
     int result = 1;

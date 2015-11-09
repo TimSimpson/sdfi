@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 pushd build/gcc
 make count_tests
 ./count_tests

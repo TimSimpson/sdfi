@@ -102,19 +102,8 @@ int word_count(const string & directory, vector<worker> & workers) {
         }
     );
 
-    // Now insert into word count and print.
-    wc::top_word_collection<10> top_words;
-    for(auto itr = totals.begin(); itr != totals.end(); ++ itr) {
-        top_words.add(itr->first, itr->second);
-    }
-    cout << endl;
-    cout << "Top words: " << endl;
-    cout << endl;
-    for(int i = 0; i < top_words.total_words(); ++i) {
-        const auto word_info = top_words.get_words()[i];
-        cout << i + 1 << ". " << word_info.first
-             << "\t" << word_info.second << "\n";
-    }
+    wc::print_top_words(totals);
+
     return 0;
 }
 

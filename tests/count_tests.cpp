@@ -451,6 +451,22 @@ TEST_CASE("communication", "[queue_distributor]") {
         CHECK(itr == text.begin() + 3);
     }
 
+    SECTION("Should go to end of word if possible") {
+        string text("!!?supercalifragilisticexpialidocious.");
+        const auto itr = dist.find_valid_end(
+            text.begin(), text.end(), false,
+            text.size());
+        CHECK(itr == text.end());
+    }
+
+    SECTION("Valid end must not == end if space insufficient and not EOF!") {
+        string text("!!?supercalifragilisticexpialidocious..");
+        const auto itr = dist.find_valid_end(
+            text.begin(), text.end(), false,
+            text.size() - 1);
+        CHECK(itr == text.end() - 1);
+    }
+
     // Testing the whole kit and caboodle.
 
     // The distributor will skip right past all of the letters if it needs to.
@@ -480,22 +496,22 @@ TEST_CASE("communication", "[queue_distributor]") {
         q2.available = 8;
         q3.available = 7;
 
-        string text("Hi there everybody!");
+        string text("Hi there you!");
         auto end_itr = dist(text.begin(), text.end(), true);
-        CHECK(q2.available == 5);
+        CHECK(q2.available == 0);
         CHECK(q3.available == 7);
         CHECK(q2.begin == text.begin());
-        CHECK(q2.end == text.begin() + text.find("there"));
-        REQUIRE(end_itr == text.begin() + text.find("there"));
+        CHECK(q2.end == text.begin() + text.find(" you"));
+        REQUIRE(end_itr == text.begin() + text.find(" you"));
 
         auto end_itr2 = dist(end_itr, text.end(), true);
-        CHECK(q2.available == 5);
-        CHECK(q3.available == 1);
+        CHECK(q2.available == 0);
+        CHECK(q3.available == 3);
         CHECK(q2.begin == text.begin());
-        CHECK(q2.end == text.begin() + text.find("there"));
-        CHECK(q3.begin == text.begin() + text.find("there"));
-        CHECK(q3.end == text.begin() + text.find("everybody!"));
-        CHECK(end_itr2 == text.begin() + text.find("everybody!"));
+        CHECK(q2.end == text.begin() + text.find(" you"));
+        CHECK(q3.begin == text.begin() + text.find("you"));
+        CHECK(q3.end == text.end());
+        CHECK(end_itr2 == text.end());
     }
 
     SECTION("If not EOF, can't proceed for small strings...") {
@@ -506,6 +522,18 @@ TEST_CASE("communication", "[queue_distributor]") {
         }, std::logic_error);
         CHECK(q2.available == 2);
         CHECK_INITIAL_STATE(q1);
+        CHECK_INITIAL_STATE(q3);
+    }
+
+    SECTION("Must capture large word in the middle of junk.") {
+        string text("!!?supercalifragilisti_e_pialidocious.");
+        q1.available = text.size() - 3;
+        const auto itr = dist(text.begin(), text.end(), false);
+        CHECK(itr == text.end());
+        CHECK(q1.available == 0);
+        CHECK(q1.begin == text.begin() + 3);
+        CHECK(q1.end == text.end());
+        CHECK_INITIAL_STATE(q2);
         CHECK_INITIAL_STATE(q3);
     }
 
