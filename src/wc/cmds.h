@@ -59,8 +59,10 @@ void print_top_words(const wc::word_map & map) {
         top_words.add(itr->first, itr->second);
     }
     std::cout << "\nTop words: \n\n";
-    for(const auto & word_info : top_words.get_words()) {
-        std::cout << word_info.first << "\t" << word_info.second << "\n";
+    for(int i = 0; i < top_words.total_words(); ++i) {
+        const auto word_info = top_words.get_words()[i];
+        std::cout << i + 1 << ". " << word_info.first
+                  << "\t" << word_info.second << "\n";
     }
 }
 
