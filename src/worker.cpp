@@ -13,7 +13,6 @@
 
 using std::cerr;
 using std::cout;
-using std::endl;
 using std::exception;
 using boost::lexical_cast;
 using std::string;
@@ -22,7 +21,7 @@ using std::vector;
 
 int main(int argc, const char * * args) {
     if (argc < 2) {
-        cerr << "Usage:" << ((argc > 0) ? args[0] : "prog") << " port" << endl;
+        cerr << "Usage:" << ((argc > 0) ? args[0] : "prog") << " port\n";
         return 1;
     }
     int port = lexical_cast<int>(args[1]);
@@ -39,7 +38,7 @@ int main(int argc, const char * * args) {
             };
 
             vector<string> files;
-            cout << "Reading in directory list..." << endl;
+            cout << "Reading in directory list...\n";
 
             string input = server.receive();
             wc::stop_watch watch;
@@ -50,11 +49,11 @@ int main(int argc, const char * * args) {
 
             // Read all words in the given directory.
             for(const string & file : files) {
-                cout << "Reading file \"" << file << "\"..." << endl;
+                cout << "Reading file \"" << file << "\"...\n";
                 wc::read_file<wc::buffer_size>(processor, file);
             }
 
-            cout << "Finished." << endl;
+            cout << "Finished.\n";
 
             // TODO: Using a streamstream is pretty dopey because the entirety
             //       of the message has to be buffered in memory, but it
@@ -71,12 +70,12 @@ int main(int argc, const char * * args) {
             // Change it into a giant string and send it.
             auto s = stream.str();
 
-            cout << "Responding... (size == " << s.length() << ")" << endl;
+            cout << "Responding... (size == " << s.length() << ")\n";
             server.send(s);
             watch.print_time();
         }
     } catch(const exception & e) {
-        cerr << "An error occured: " << e.what() << endl;
+        cerr << "An error occured: " << e.what() << "\n";
         return 1;
     }
 }

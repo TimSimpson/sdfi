@@ -14,7 +14,6 @@
 
 using std::cerr;
 using std::cout;
-using std::endl;
 using std::exception;
 using boost::lexical_cast;
 using std::string;
@@ -26,7 +25,7 @@ using std::vector;
 int main(int argc, const char * * args) {
     cout << "Worker 3\n";
     if (argc < 2) {
-        cerr << "Usage:" << ((argc > 0) ? args[0] : "prog") << " port" << endl;
+        cerr << "Usage:" << ((argc > 0) ? args[0] : "prog") << " port\n";
         return 1;
     }
     int port = lexical_cast<int>(args[1]);
@@ -52,7 +51,7 @@ int main(int argc, const char * * args) {
             });
         }
     } catch(const exception & e) {
-        cerr << "An error occured: " << e.what() << endl;
+        cerr << "An error occured: " << e.what() << "\n";
         return 1;
     }
 }

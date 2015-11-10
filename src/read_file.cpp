@@ -14,7 +14,6 @@
 using std::cerr;
 using std::cin;
 using std::cout;
-using std::endl;
 using std::ifstream;
 using std::length_error;
 using boost::optional;
@@ -41,7 +40,7 @@ int main(int argc, const char * * args) {
             wc::read_using_buffer<wc::buffer_size>(cin, processor);
         }
     } catch(const length_error &) {
-        cerr << "A word in this file was too large to be processed." << endl;
+        cerr << "A word in this file was too large to be processed.\n";
         return 2;
     }
 

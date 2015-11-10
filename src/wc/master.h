@@ -56,7 +56,7 @@ template<typename Distributor>
 void reader_thread(Distributor & distributor,
                    const std::string & root_directory) {
     auto file_handler = [&distributor](const std::string full_path) {
-        std::cerr << "Reading file \"" << full_path << "\"..." << std::endl;
+    std::cerr << "Reading file \"" << full_path << "\"...\n";
         read_file<buffer_size>(distributor, full_path);
     };
     read_directory(file_handler, root_directory, std::cerr);

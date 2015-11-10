@@ -13,7 +13,6 @@
 
 using std::cerr;
 using std::cout;
-using std::endl;
 using std::exception;
 using std::string;
 
@@ -21,7 +20,7 @@ using std::string;
 int main(int argc, const char * * args) {
     if (argc < 2) {
         cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
-             << " [directory]" << endl;
+             << " [directory]\n";
         return 1;
     }
 
@@ -33,14 +32,14 @@ int main(int argc, const char * * args) {
     };
 
     auto file_handler = [&processor](const string full_path) {
-        cout << "Reading file \"" << full_path << "\"..." << endl;
+        cout << "Reading file \"" << full_path << "\"...\n";
         wc::read_file<wc::buffer_size>(processor, full_path);
     };
 
     try {
         wc::read_directory(file_handler, args[1], cerr);
     } catch(const exception & e) {
-        cerr << "Error reading directory: " << e.what() << endl;
+        cerr << "Error reading directory: " << e.what() << "\n";
         return 2;
     }
 

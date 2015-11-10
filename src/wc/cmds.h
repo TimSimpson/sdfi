@@ -49,7 +49,7 @@ void nap() {
 
 void print_word_map(const wc::word_map & map) {
     for(auto itr = map.begin(); itr != map.end(); ++ itr) {
-        std::cout << itr->first << "\t" << itr->second << std::endl;
+        std::cout << itr->first << "\t" << itr->second << "\n";
     }
 }
 
@@ -58,11 +58,9 @@ void print_top_words(const wc::word_map & map) {
     for(auto itr = map.begin(); itr != map.end(); ++ itr) {
         top_words.add(itr->first, itr->second);
     }
-    std::cout << std::endl
-              << "Top words: " << std::endl
-              << std::endl;
+    std::cout << "\nTop words: \n\n";
     for(const auto & word_info : top_words.get_words()) {
-        std::cout << word_info.first << "\t" << word_info.second << std::endl;
+        std::cout << word_info.first << "\t" << word_info.second << "\n";
     }
 }
 

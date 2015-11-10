@@ -41,7 +41,7 @@ struct worker {
 // is the second argument.
 void start_worker(boost::asio::io_service & ioservice, worker & worker)
 {
-    cout << "Starting worker " << worker.host << "..." << endl;
+    cout << "Starting worker " << worker.host << "...\n";
     wc::client client(ioservice, worker.host, worker.port);
 
     for (const auto & file : worker.files) {
@@ -72,12 +72,12 @@ int word_count(const string & directory, vector<worker> & workers) {
         start_worker(ioservice, workers[i]);
     }
 
-    cout << "Waiting..." << endl;
+    cout << "Waiting...\n";
     // The line below will wait until all of the receiver Boost ASIO async code
     // has executed.
     ioservice.run();
 
-    cout << "Finished..." << endl;
+    cout << "Finished...\n";
     for (const auto worker : workers) {
         if (worker.results_collector.error_occured()) {
             cerr << "An error occured on " << worker.host << " "
@@ -93,7 +93,7 @@ int word_count(const string & directory, vector<worker> & workers) {
         }
     }
 
-    cout << "Performing final count..." << endl;
+    cout << "Performing final count...\n";
 
     wc::word_map totals = wc::sum_word_maps(
         workers,
@@ -110,7 +110,7 @@ int word_count(const string & directory, vector<worker> & workers) {
 int main(int argc, const char * * args) {
     if (argc < 4) {
         cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
-             << " directory host port [host port...]" << endl;
+             << " directory host port [host port...]\n";
         return 1;
     }
     wc::stop_watch watch;
@@ -125,7 +125,7 @@ int main(int argc, const char * * args) {
     try {
         result = word_count(directory, workers);
     } catch(const exception & e) {
-        cerr << "An error occured: " << e.what() << endl;
+        cerr << "An error occured: " << e.what() << "\n";
         result = 1;
     }
     watch.print_time();

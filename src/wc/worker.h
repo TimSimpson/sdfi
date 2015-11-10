@@ -61,7 +61,7 @@ void run_worker(int port, auto fill_response) {
     wc::server server(port);
 
     std::vector<std::string> files;
-    std::cout << "Reading in text..." << std::endl;
+    std::cout << "Reading in text...\n";
 
     wc::word_counter counter;
 
@@ -74,7 +74,7 @@ void run_worker(int port, auto fill_response) {
     };
     wc::read_using_buffer<wc::buffer_size>(reader, processor);
 
-    std::cout << "Finished." << std::endl;
+    std::cout << "Finished.\n";
 
     // Create the giant message in memory.
     std::stringstream stream;
@@ -84,7 +84,7 @@ void run_worker(int port, auto fill_response) {
     // Change it into a giant string and send it.
     auto s = stream.str();
 
-    std::cout << "Responding... (size == " << s.length() << ")" << std::endl;
+    std::cout << "Responding... (size == " << s.length() << ")\n";
     server.send(s);
     watch.print_time();
 }

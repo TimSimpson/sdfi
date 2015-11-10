@@ -19,7 +19,6 @@
 
 using std::cerr;
 using std::cout;
-using std::endl;
 using std::exception;
 using boost::lexical_cast;
 using std::size_t;
@@ -31,7 +30,7 @@ using std::vector;
 int main(int argc, const char * * args) {
     if (argc < 4) {
         cerr << "Usage:" << ((argc > 0) ? args[0] : "prog")
-             << " directory host port [host port...]" << endl;
+             << " directory host port [host port...]\n";
         return 1;
     }
     wc::stop_watch watch;
@@ -54,7 +53,7 @@ int main(int argc, const char * * args) {
         };
         result = wc::master_word_count(directory, workers, producer_func);
     } catch(const exception & e) {
-        cerr << "An error occured: " << e.what() << endl;
+        cerr << "An error occured: " << e.what() << "\n";
         result = 1;
     }
     watch.print_time();

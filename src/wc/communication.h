@@ -80,7 +80,7 @@ void async_collect_results(client & client,
         },
         [&collector](const std::string & msg) {
             collector.set_error();
-            std::cerr << msg << std::endl;
+            std::cerr << msg << "\n";
         }
     );
 }
