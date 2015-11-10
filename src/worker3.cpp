@@ -24,6 +24,7 @@ using std::vector;
 
 
 int main(int argc, const char * * args) {
+    cout << "Worker 3\n";
     if (argc < 2) {
         cerr << "Usage:" << ((argc > 0) ? args[0] : "prog") << " port" << endl;
         return 1;
