@@ -102,6 +102,9 @@ etc.
 Because no two worker3 instances see the same word, they are free to send back
 only the top ten words, of master3 takes the maximum of.
 
+Note: performance for this version is currently pretty bad, potentially due to
+locking bottlenecks in the queue code.
+
 
 Performance
 ~~~~~~~~~~~
@@ -123,7 +126,7 @@ Server.
     8. my   3318784
     9. that 3060736
     10. in  3032064
-    Elapsed time: 489159ms
+    Elapsed time: 262191ms
 
 Here's the same result running worker processes on three Rackspace Cloud
 Servers, with one running the master process:
@@ -142,16 +145,28 @@ Servers, with one running the master process:
     8. my   3318784
     9. that 3060736
     10. in  3032064
-    Elapsed time: 181320ms
+    Elapsed time: 120130ms
+
+The following uses three servers again but this time running version two of
+the master / worker programs, where master reads and distributes all of the
+files:
+
+.. code-block:: bash
+
+    1. the  7645440
+    2. and  7055104
+    3. i    5979392
+    4. to   5395200
+    5. of   4743424
+    6. a    3974400
+    7. you  3651840
+    8. my   3318784
+    9. that 3060736
+    10. in  3032064
+    Elapsed time: 220905ms
 
 Future Plans
 ~~~~~~~~~~~~
-
-Because work is split via files, luck may have it that a worker might end up
-having to read several large files while its peers read smaller ones and
-finish earlier. If the workers could instead receive one (or maybe a handful)
-of files from the master and ask for more as they finished the workload would
-probably be better distributed in the presence of infrequent, very large files.
 
 Currently all workers create a massive string to send back to the master. While
 there haven't been any noticable problems doing this in theory it would mean
