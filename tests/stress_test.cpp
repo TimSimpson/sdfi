@@ -7,56 +7,17 @@
 #include <wc/top.h>
 #include <wc/worker.h>
 #include <iostream>
-#include <sstream>
 #include <boost/lexical_cast.hpp>
 #include <wc/master.h>
 
 using std::cerr;
 using std::cout;
 using std::endl;
-using std::exception;
 using boost::lexical_cast;
 using std::string;
-using std::stringstream;
 using std::vector;
 using std::unique_ptr;
 
-
-struct wrapper_type {
-    int counter;
-    stringstream & input;
-
-    wrapper_type(stringstream & i)
-    :   input(i),
-        counter(10)
-    {}
-
-    bool has_more() const {
-        return input && input.good() && !input.eof();
-    }
-
-    template<typename SizeType, typename Iterator>
-    SizeType read(Iterator output_buffer, SizeType count) {
-        if (counter >= count - 1) {
-            counter = 10;
-        }
-        counter ++;
-        input.read(output_buffer, counter);
-        return input.gcount();
-    }
-} ;
-
-
-// string read_hamlet() {
-//     std::ifstream actual_file("/books-s/Shakespeare/Hamlet.txt",
-//                               std::ifstream::binary);
-//     std::stringstream whole_file;
-//     std::string line;
-//     while(std::getline(actual_file, line)) {
-//         whole_file << line << "\n";
-//     }
-//     return whole_file.str();
-// }
 
 int main(int argc, const char * * args) {
     if (argc < 3) {
@@ -74,7 +35,6 @@ int main(int argc, const char * * args) {
     const string directory(args[1]);
     const int expected_words(boost::lexical_cast<int>(string(args[2])));
 
-    // const string hamlet = read_hamlet();
     int program_result = 0;
     while(program_result == 0) {
         const vector<int> ports = { 7111, 7112, 7113, 7114, 7115, 7116 };
@@ -105,7 +65,11 @@ int main(int argc, const char * * args) {
             worker_threads.emplace_back(worker_func);
         }
 
+        // Give the worker threads a chance to start.
+        // TODO: Fix race condition... in some universe where fixing a race
+        //       condition for this manual test is worth doing.
         wc::nap();
+
         for (int port : ports) {
             queues.push_back(std::make_unique<queue_type>());
             auto * queue = queues.back().get();
@@ -136,46 +100,11 @@ int main(int argc, const char * * args) {
         auto master_reader = [&queue_ptrs, words_to_send, &directory] () {
             wc::queue_distributor<queue_loader_vec, queue_loader> dist(queue_ptrs);
 
-            // Using read_directory - (known bug)
-            // ----------------------------------
             auto file_handler = [&dist](const std::string full_path) {
                 std::cerr << "Reading file \"" << full_path << "\"..." << std::endl;
                 wc::read_file<wc::buffer_size>(dist, full_path);
             };
             wc::read_directory(file_handler, directory, std::cerr);
-
-            // Use read file - (BREAKS)
-            // -------------------------
-            // wc::read_file<wc::buffer_size>(dist,
-            //                                "/books-s/Shakespeare/Hamlet.txt");
-
-
-            // Read first into stream, then read the stream forever.
-            // -----------------------------------------------------
-            // std::stringstream whole_file2;
-            // whole_file2 << hamlet;
-            // wc::read_using_buffer<wc::buffer_size>(whole_file2, dist);
-
-            /// Calling dist directly
-
-            // for (size_t i = 0; i < words_to_send; ++i) {
-            //     string text("the cat the rat");
-            //     dist(text.begin(), text.end(), false);
-            // }
-
-
-            // string end("!!");
-            // dist(end.begin(), end.end(), true);
-
-            // Using read_using_buffer....
-            // -------------------------
-            // stringstream input;
-            // wrapper_type wrapper(input);
-
-            // for (size_t i = 0; i < words_to_send; ++ i) {
-            //     input << "!! 11 \n\n\n The cat   tHe rat... ";
-            // }
-            // wc::read_using_buffer<wc::buffer_size>(wrapper, dist);
         };
         std::thread master_thread_reader(master_reader);
 
