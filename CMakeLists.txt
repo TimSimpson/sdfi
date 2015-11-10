@@ -73,4 +73,5 @@ add_wc_exe(master3 src/master3.cpp)
 
 
 add_wc_exe(worker_master_comm tests/worker_master_comm.cpp)
+add_wc_exe(stress-test tests/stress_test.cpp)
 add_wc_test(count_tests)

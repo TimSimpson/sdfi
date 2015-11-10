@@ -175,7 +175,7 @@ public:
     Iterator operator()(const Iterator begin, const Iterator end,
                         const bool eof)
     {
-        Iterator proc_start = find_valid_start(begin, end);
+        const Iterator proc_start = find_valid_start(begin, end);
         if (end == proc_start) {
             return end; // No work characters found, so processing complete.
         }

@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
-#include <map>
+#include <unordered_map>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -11,7 +11,7 @@
 
 namespace wc {
 
-using word_map = std::map<std::string, std::size_t>;
+using word_map = std::unordered_map<std::string, std::size_t>;
 
 // Returns true if C is part of a word.
 inline bool is_word_character(char c) {
@@ -62,7 +62,7 @@ struct stream_ref_wrapper {
     {}
 
     bool has_more() const {
-        return stream && stream.good() && !stream.eof();
+        return true && stream; // && stream.good() && !stream.eof();
     }
 
     template<typename Iterator, typename SizeType>
@@ -96,26 +96,40 @@ auto read_using_buffer(Input & input, Func & process_text)
 
         auto end_itr = start_itr + length;
 
-        // Each time, process_text reads the full buffer- this is to give it
-        // a chance to pick up any words it may have missed the last round,
-        // which get copied back to the start of the buffer.
-        auto last_unprocessed_pos = process_text(
-            buffer, end_itr, !input.has_more());
-        if (last_unprocessed_pos == end_itr) {
-            start_itr = buffer;
-        } else {
-            if (last_unprocessed_pos == buffer
-                && sizeof(buffer) == (end_itr - buffer)) {
+
+        bool chunk_finished = false;
+        do {
+            // Each time, process_text reads the full buffer- this is to give it
+            // a chance to pick up any words it may have missed the last round,
+            // which get copied back to the start of the buffer.
+            auto last_unprocessed_pos = process_text(
+                buffer, end_itr, !input.has_more());
+            if (last_unprocessed_pos == end_itr) {
+                start_itr = buffer;
+                chunk_finished = true;
+            } else {
+                if (last_unprocessed_pos == buffer
+                    && sizeof(buffer) == (end_itr - buffer)) {
                 throw std::length_error("Buffer is too small to accomodate "
-                    "continous data of this size.");
+                        "continous data of this size.");
+                }
+                // Because the function didn't finish, we need to put that
+                // data at the start so it can try again.
+                std::copy(last_unprocessed_pos, end_itr, buffer);
+                // TODO: Consider passing the previous itr back into process_text-
+                //       that way it wouldn't have to reparse the old data.
+                start_itr = buffer + (end_itr - last_unprocessed_pos);
+                // We *might* use end_itr again (if this was EOF) so adjust it
+                // to avoid reading extra stuff.
+                end_itr = start_itr ; // (end_itr - last_unprocessed_pos);
+                chunk_finished = false;
             }
-            // Because the function didn't finish, we need to put that
-            // data at the start so it can try again.
-            std::copy(last_unprocessed_pos, end_itr, buffer);
-            // TODO: Consider passing the previous itr back into process_text-
-            //       that way it wouldn't have to reparse the old data.
-            start_itr = buffer + (end_itr - last_unprocessed_pos);
-        }
+            // If we're at EOF on the file, we want to avoid leaving this loop
+            // until process_text has seen everything. In most processors it
+            // will always process unless it can't due to a text being too
+            // short, but with asynchronous distributors it will return when
+            // interrupted.
+        } while(!input.has_more() && !chunk_finished);
     }
 }
 

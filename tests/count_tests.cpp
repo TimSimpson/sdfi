@@ -222,6 +222,39 @@ TEST_CASE("read_using_buffer", "[read_using_buffer]") {
         CHECK(results[0] == "a");
         CHECK(results[1] == "taco");
     }
+
+    SECTION("Ensure interrupted process always sees all input.") {
+        // If a processor returns prematurely, there is a risk that it won't
+        // see all of the data, especially if the stream is EOF.
+        // This test makes sure that doesn't happen.
+        int ip_index = -1;
+        auto interruptable_processor = [&ip_index, &record_result](
+            auto begin, auto end, bool eof)
+        {
+            ++ ip_index;
+            if (0 == ip_index) {
+                CHECK(string(begin, end) == "a tac");
+                return begin + 3;
+            } else if (1 <= ip_index && ip_index <= 10) {
+                // The buffered reader needs to call us back repeatedly
+                // with this same data.
+                CHECK(string(begin, end) == "aco");
+                return begin;
+            } else if (ip_index == 11) {
+                CHECK(string(begin, end) == "aco");
+                return begin + 1;
+            } else if (ip_index == 12) {
+                CHECK(string(begin, end) == "co");
+                CHECK(end == begin + 2);
+                return end;
+            }
+            CHECK(ip_index <= 12);
+        };
+
+        input << "a taco";
+        read_using_buffer<5>(input, interruptable_processor);
+        CHECK(ip_index == 12);
+    }
 }
 
 
